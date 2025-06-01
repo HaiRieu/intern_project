@@ -8,6 +8,10 @@ void appprocess();
 
 bool restoreSettings(  IMU_config_data_anJoystick_packed &configData);
 
+void saveSetting(IMU_config_data_anJoystick_packed &configData) ;
+
+bool validateSettings(IMU_config_data_anJoystick_packed &configData) ; 
+
 void setDefaultSettings(IMU_config_data_anJoystick_packed &configData);
 
 bool initIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
@@ -49,8 +53,7 @@ void readDataIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
                  Adafruit_Sensor_Calibration_EEPROM &cal,
                  Adafruit_NXPSensorFusion &fillsion1,
                  Adafruit_NXPSensorFusion &fillsion2,
-                 IMU1_data_Raw_packed &imu1DataRawPacked,
-                 IMU2_data_Raw_packed &imu2DataRawPacked,
+                 IMU_data_Raw_packed ImuArray[NUM_IMUS], 
                  IMU1_euler_calib_status_packed &imu1EulerCalibration,
                  IMU2_euler_calib_status_packed &imu2EulerCalibration);
 

@@ -1,6 +1,5 @@
 #include "functiondef.h"
 
-
 BleGamepad bleGamepad;
 BleGamepadConfiguration bleGamepadConfig;
 Adafruit_LSM6DS3TRC lsm6ds1;
@@ -9,13 +8,17 @@ Adafruit_LIS3MDL lis3mdl1;
 Adafruit_LIS3MDL lis3mdl2;
 Adafruit_Sensor_Calibration_EEPROM cal;
 Adafruit_NXPSensorFusion fillsion1, fillsion2;
-Adafruit_MAX17048 fuelGauge; 
-
-
+Adafruit_MAX17048 fuelGauge;
 
 bool calibrationLoaded = false;
 bool imuDataIMU1Ready = false;
 bool imuDataIMU2Ready = false;
+
+static IMU_config_data_anJoystick_packed configData;
+static Overall_status_data_packed overallStatusDataPacked;
+static IMU1_euler_calib_status_packed imu1EulerCalibration;
+static IMU2_euler_calib_status_packed imu2EulerCalibration;
+static calibratee cal1;
 
 void appsetup()
 {
@@ -27,8 +30,7 @@ void appsetup()
   digitalWrite(VSVY_EN_PIN, LOW);
   Wire.begin(33, 34);
 
-  IMU_config_data_anJoystick_packed configData; 
- if (!restoreSettings(configData))
+  if (!restoreSettings(configData))
   {
     Serial.println("Failed to restore settings from EEPROM");
   }
@@ -37,13 +39,12 @@ void appsetup()
     setDefaultSettings(configData);
   }
 
-  Overall_status_data_packed overallStatusDataPacked;
-  if (!initFuelGauge (fuelGauge , overallStatusDataPacked))
+  if (!initFuelGauge(fuelGauge, overallStatusDataPacked))
   {
     Serial.println("Fuel gauge initialization failed");
   }
 
-  if (!initIMU(lsm6ds1, lsm6ds2, lis3mdl1, lis3mdl2 , fillsion1, fillsion2, overallStatusDataPacked))
+  if (!initIMU(lsm6ds1, lsm6ds2, lis3mdl1, lis3mdl2, fillsion1, fillsion2, overallStatusDataPacked))
   {
 
     Serial.println("IMU initialization failed");
@@ -58,9 +59,6 @@ void appsetup()
     setupIMUInterrupts(lsm6ds1, lsm6ds2, lis3mdl1, lis3mdl2);
   }
 
-IMU1_euler_calib_status_packed imu1EulerCalibration;
-IMU2_euler_calib_status_packed imu2EulerCalibration;
-calibratee cal1;
   if (loadCalibration(imu1EulerCalibration, imu2EulerCalibration, cal1))
   {
     calibrationLoaded = true;
@@ -73,15 +71,12 @@ calibratee cal1;
   {
     Serial.println("Calibration loaded successfully");
   }
-    Serial.println("Failed to load calibration");
-  
+  Serial.println("Failed to load calibration");
+
   setupBLEGamepad(bleGamepad, bleGamepadConfig);
   ledRGB();
   updateOverallStatusData(overallStatusDataPacked);
-
-  
 }
-
 
 void appprocess()
 {
@@ -89,32 +84,95 @@ void appprocess()
 
 
 
+static uint16_t CRC16(const uint8_t *data, size_t length)
+{
 
-/*
-brief Calculate checksum for IMU and Joystick configuration data
- *
- * @param configData Reference to the IMU_config_data_anJoystick_packed structure containing configuration data
- * @return Calculated checksum value
- *
- * This function calculates the checksum for the IMU and Joystick configuration data by XORing all bytes in the packed structure.
-*/
-uint8_t checksum(IMU_config_data_anJoystick_packed &configData) {
-   uint8_t checksum = 0 ;
-   uint8_t *ptr = (uint8_t*)&configData.configDataIMUJOTISK;
-     for(size_t i = 0 ; i < sizeof(configData.configDataIMUJOTISK); i++) {
-       checksum ^= ptr[i];
-      
-     }
-     return checksum;
+  uint16_t crc = 0xFFFF;
+  for (size_t i = 0; i < length; i++)
+  {
+    crc ^= data[i];
+    for (uint8_t j = 0; j < 8; j++)
+    {
+      if (crc & 0x0001)
+      {
+        crc = (crc >> 1) ^ 0xA001;
+      }
+      else
+      {
+        crc >>= 1;
+      }
+    }
+  }
+  return crc;
+}
+
+bool restoreSettings(IMU_config_data_anJoystick_packed &configData)
+{
+  uint8_t buffer[sizeof(configData.rawData) + 4];
+
+  for(size_t i = 0 ; i < sizeof(buffer) ; i++ ) {
+    buffer[i] = EEPROM.read(SETTING_ADDR + i ) ; 
+  }
+
+  if (buffer[0] != SETTINGS_MAGIC1 || buffer[1] != SETTING_MAGIC2)
+  {
+    setDefaultSettings(configData);
+    return false;
+  
+  
+  }
+
+
+  uint16_t storeCRC = (buffer[sizeof(configData.rawData) + 3] << 8) | buffer[sizeof(configData.rawData) + 2];
+  uint16_t calulateCRC = CRC16(buffer, sizeof(configData.rawData) + 2);
+  if (calulateCRC != storeCRC)
+  {
+    setDefaultSettings(configData);
+    return false;
+  }
+  memcpy(&configData ,buffer + 2 , sizeof(configData.rawData)) ;
+  if(!validateSettings(configData)) {
+        setDefaultSettings(configData);
+        return false ;
+  }
+
+
+return true ;
+
+}
+
+void saveSetting(IMU_config_data_anJoystick_packed &configData) {
+    
+   uint8_t buffer[SETTING_SIZE + 4]  ;
+   buffer[0] = SETTINGS_MAGIC1 ; 
+   buffer[1] = SETTING_MAGIC2 ;
+   
+   memcpy(buffer + 2 , &configData , SETTING_SIZE) ;
+
+   uint16_t crc = CRC16(buffer , SETTING_SIZE + 2 ) ;
+   buffer[SETTING_SIZE + 2 ] = crc & 0xFF ; 
+   buffer[SETTING_SIZE + 3 ] = (crc >> 8) & 0xFF ; 
+   for(size_t i = 0 ; i <= sizeof(buffer) ; i++  ) {
+     EEPROM.write(SETTING_ADDR + i , buffer[i]) ; 
+
+
+   } 
+   EEPROM.commit() ;
 
 }
 
 
 
-/*
-brief Set default settings for IMU and Joystick
-*/
-void setDefaultSettings(IMU_config_data_anJoystick_packed &configData )
+bool validateSettings(IMU_config_data_anJoystick_packed &configData) {
+    if (configData.configDataIMUJOTISK.Joystick_flex_sensor_rate < 100 || 
+        configData.configDataIMUJOTISK.Joystick_flex_sensor_rate > 1000) {
+        return false;
+    }
+    return true;
+}
+
+
+void setDefaultSettings(IMU_config_data_anJoystick_packed &configData)
 {
 
   configData.configDataIMUJOTISK.IMU1_accel_gyro_rate = LSM6DS_RATE_12_5_HZ;
@@ -130,37 +188,11 @@ void setDefaultSettings(IMU_config_data_anJoystick_packed &configData )
   configData.configDataIMUJOTISK.IMU2_mag_range = LIS3MDL_RANGE_4_GAUSS;
 
   configData.configDataIMUJOTISK.Joystick_flex_sensor_rate = 100;
-
-for(size_t i = 0; i < sizeof(configData.configDataIMUJOTISK); i++)
-  {
-    EEPROM.write(i, configData.rawData[i]);
-  }
-
-  EEPROM.commit() ; 
-  Serial.println("Default settings saved");
+  saveSetting(configData) ; 
+  
 }
 
 
-bool restoreSettings(IMU_config_data_anJoystick_packed &configData) {
-   uint8_t* ptr = (uint8_t*)&configData.configDataIMUJOTISK;
-   for(size_t i = 0 ; i <= sizeof(configData.configDataIMUJOTISK); i++) {
-        ptr[i] = EEPROM.read(i);
-
-  } 
-   uint8_t check = checksum(configData);
-   if(check != configData.configDataIMUJOTISK.checksum) {
-     Serial.println("Checksum mismatch, settings not restored");
-      setDefaultSettings(configData) ; 
-      return false;
-   } 
-   if(configData.configDataIMUJOTISK.Joystick_flex_sensor_rate <100 || 
-    configData.configDataIMUJOTISK.Joystick_flex_sensor_rate > 1000) {
-     Serial.println("Invalid Joystick flex sensor rate, setting to default");
-      setDefaultSettings(configData) ;
-     return false ; 
-   }
-     return true ;
-}
 
 /*
 brief Load calibration data from EEPROM
@@ -169,9 +201,7 @@ brief Load calibration data from EEPROM
 
 */
 
-bool loadCalibration( IMU1_euler_calib_status_packed &imu1EulerCalibration
-  , IMU2_euler_calib_status_packed &imu2EulerCalibration
-  , calibratee &calibrationData)
+bool loadCalibration(IMU1_euler_calib_status_packed &imu1EulerCalibration, IMU2_euler_calib_status_packed &imu2EulerCalibration, calibratee &calibrationData)
 {
   if (!EEPROM.begin(512))
   {
@@ -256,8 +286,7 @@ void setupBLEGamepad(BleGamepad &bleGamepad, BleGamepadConfiguration &bleGamepad
   bleGamepad.begin(&bleGamepadConfig);
 }
 
-
-bool initFuelGauge(Adafruit_MAX17048 &fuelGauge , Overall_status_data_packed &overallStatusDatapPacked)
+bool initFuelGauge(Adafruit_MAX17048 &fuelGauge, Overall_status_data_packed &overallStatusDatapPacked)
 {
   if (!fuelGauge.begin())
   {
@@ -279,7 +308,7 @@ brief Update the overall status data
  * It sets the status code and sensor statuses based on their readiness.
 */
 
-void updateOverallStatusData( Overall_status_data_packed &overallStatusDatapPacked)
+void updateOverallStatusData(Overall_status_data_packed &overallStatusDatapPacked)
 {
   overallStatusDatapPacked.overallStatusData.status_code = statuscode::NO_ERROR;
   overallStatusDatapPacked.overallStatusData.Fuelgause_status = fuelGauge.isDeviceReady() ? statuscode_sensor::RUNNING : statuscode_sensor::FAILED;
@@ -308,7 +337,7 @@ void setupIMUInterrupts(Adafruit_LSM6DS3TRC &lsm6ds1, Adafruit_LSM6DS3TRC &lsm6d
   attachInterrupt(digitalPinToInterrupt(IMU2_INT_PIN), imu1InterruptHandler, RISING);
   lsm6ds1.configInt1(false, false, true);
   lsm6ds2.configInt1(false, false, true);
- 
+
   Serial.println("IMU interrupts configured");
 }
 
@@ -324,4 +353,3 @@ void IRAM_ATTR imu2InterruptHandler()
 {
   imuDataIMU2Ready = true;
 }
-
