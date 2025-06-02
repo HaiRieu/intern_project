@@ -26,38 +26,47 @@ bool initIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
              Overall_status_data_Union &overallStatusDatapPacked)
 {
 
+    bool imu1Status = true;
+    bool imu2Status = true;
+
     if (!lsm6ds1.begin_I2C(0x6A))
     {
         Serial.println("Failed to find LSM6DS1 chip");
         overallStatusDatapPacked.overallStatusData.Imu1_status = statuscode_sensor::FAILED;
-        overallStatusDatapPacked.overallStatusData.Imu1_status = statuscode_sensor::FAILED;
-    
+        imu1Status = false;
     }
     if (!lsm6ds2.begin_I2C(0x6B))
     {
         Serial.println("Failed to find LSM6DS2 chip");
         overallStatusDatapPacked.overallStatusData.Imu2_status = statuscode_sensor::FAILED;
-      
+        imu2Status = false;
     }
     if (!lis3mdl1.begin_I2C(0x1E))
     {
         Serial.println("Failed to find LIS3MDL chip 1");
-    
+        overallStatusDatapPacked.overallStatusData.Imu1_status = statuscode_sensor::FAILED;
+        imu1Status = false;
     }
-    if (!lis3mdl1.begin_I2C(0x1C))
+    if (!lis3mdl2.begin_I2C(0x1C))
     {
         Serial.println("Failed to find LIS3MDL chip 2");
-    
+        overallStatusDatapPacked.overallStatusData.Imu2_status = statuscode_sensor::FAILED;
+        imu2Status = false;
     }
 
-    fillsion1.begin(FILTER_UPDATE_RATE_HZ);
-    fillsion2.begin(FILTER_UPDATE_RATE_HZ);
+    if (imu1Status)
+    {
+        fillsion1.begin(FILTER_UPDATE_RATE_HZ);
+        overallStatusDatapPacked.overallStatusData.Imu1_status = statuscode_sensor::RUNNING;
+    }
+    if (imu2Status)
+    {
+        fillsion2.begin(FILTER_UPDATE_RATE_HZ);
+        overallStatusDatapPacked.overallStatusData.Imu2_status = statuscode_sensor::RUNNING;
+    }
     timestamp = millis();
-
-    overallStatusDatapPacked.overallStatusData.Imu1_status = statuscode_sensor::RUNNING;
-    overallStatusDatapPacked.overallStatusData.Imu2_status = statuscode_sensor::RUNNING;
-    IMUsAvailable = true;
-    return true;
+    IMUsAvailable = imu1Status || imu2Status;
+    return IMUsAvailable ;
 }
 
 /*
@@ -183,4 +192,3 @@ void readDataIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
     {
     }
 }
-
