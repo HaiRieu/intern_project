@@ -10,25 +10,25 @@ Adafruit_Sensor_Calibration_EEPROM cal;
 Adafruit_NXPSensorFusion fillsion1, fillsion2;
 Adafruit_MAX17048 fuelGauge;
 
-bool calibrationLoaded = false;
 bool imuDataIMU1Ready = false;
 bool imuDataIMU2Ready = false;
 
-static IMU_config_data_anJoystick_packed configData;
-static Overall_status_data_packed overallStatusDataPacked;
-static IMU1_euler_calib_status_packed imu1EulerCalibration;
-static IMU2_euler_calib_status_packed imu2EulerCalibration;
-static calibratee cal1;
+static IMU_config_data_anJoystick_Union configData;
+static Overall_status_data_Union overallStatusDataUnion;
+static IMU1_euler_calib_status_Union imu1EulerCalibration;
+static IMU2_euler_calib_status_Union imu2EulerCalibration;
+static Flex_sensor_data_Union flexSensorDataUnion;
+static Force_sensor_data_Union forceSensorDataUnion;
+
+unsigned long lastFlexSensorReadTime = 0;
+unsigned long readFlexSensorInterval = 100;
 
 void appsetup()
 {
 
   Serial.begin(115200);
-  Serial.println("Setting up application...");
-
-  pinMode(VSVY_EN_PIN, OUTPUT);
-  digitalWrite(VSVY_EN_PIN, LOW);
-  Wire.begin(33, 34);
+  Wire.begin(I2C_SCL_PIN, I2C_SDA_PIN);
+  SystemInit();
 
   if (!restoreSettings(configData))
   {
@@ -39,18 +39,14 @@ void appsetup()
     setDefaultSettings(configData);
   }
 
-  if (!initFuelGauge(fuelGauge, overallStatusDataPacked))
+  if (!initFuelGauge(fuelGauge, overallStatusDataUnion))
   {
     Serial.println("Fuel gauge initialization failed");
   }
 
-  if (!initIMU(lsm6ds1, lsm6ds2, lis3mdl1, lis3mdl2, fillsion1, fillsion2, overallStatusDataPacked))
+  if (!initIMU(lsm6ds1, lsm6ds2, lis3mdl1, lis3mdl2, fillsion1, fillsion2, overallStatusDataUnion))
   {
 
-    Serial.println("IMU initialization failed");
-  }
-  else if (!restoreSettings(configData))
-  {
     Serial.println("IMU initialization failed");
   }
   else
@@ -59,31 +55,41 @@ void appsetup()
     setupIMUInterrupts(lsm6ds1, lsm6ds2, lis3mdl1, lis3mdl2);
   }
 
-  if (loadCalibration(imu1EulerCalibration, imu2EulerCalibration, cal1))
+  if (loadCalibration(cal, imu1EulerCalibration, imu2EulerCalibration))
   {
-    calibrationLoaded = true;
+
     Serial.println("Calibration loaded successfully");
   }
   else
   {
     Serial.println("Failed to load calibration");
   }
-  {
-    Serial.println("Calibration loaded successfully");
-  }
-  Serial.println("Failed to load calibration");
 
   setupBLEGamepad(bleGamepad, bleGamepadConfig);
   ledRGB();
-  updateOverallStatusData(overallStatusDataPacked);
+  updateOverallStatusData(overallStatusDataUnion);
 }
 
 void appprocess()
 {
+  if (millis() - lastFlexSensorReadTime >= readFlexSensorInterval)
+  {
+    ReadAnnalogSensor(flexSensorDataUnion);
+    lastFlexSensorReadTime = millis();
+  }
 }
 
+/*
+brief Calculate CRC16 checksum
 
-
+ * This function calculates the CRC16 checksum for a given data buffer.
+ * It uses the polynomial 0xA001 and initializes the CRC with 0xFFFF.
+ * The function iterates through each byte of the data, updating the CRC accordingly.
+ *
+ * @param data Pointer to the data buffer
+ * @param length Length of the data buffer
+ * @return Calculated CRC16 checksum
+*/
 static uint16_t CRC16(const uint8_t *data, size_t length)
 {
 
@@ -106,22 +112,30 @@ static uint16_t CRC16(const uint8_t *data, size_t length)
   return crc;
 }
 
-bool restoreSettings(IMU_config_data_anJoystick_packed &configData)
+/*
+brief Restore settings from EEPROM
+
+ * This function reads the settings from EEPROM and restores them into the provided configData structure.
+ * It checks for a magic number to validate the data and calculates the CRC to ensure data integrity.
+ * If the data is invalid or corrupted, it sets default settings.
+ *
+ * @param configData Reference to the IMU_config_data_anJoystick_Union structure to store restored settings
+ * @return true if settings were successfully restored, false otherwise
+*/
+bool restoreSettings(IMU_config_data_anJoystick_Union &configData)
 {
   uint8_t buffer[sizeof(configData.rawData) + 4];
 
-  for(size_t i = 0 ; i < sizeof(buffer) ; i++ ) {
-    buffer[i] = EEPROM.read(SETTING_ADDR + i ) ; 
+  for (size_t i = 0; i < sizeof(buffer); i++)
+  {
+    buffer[i] = EEPROM.read(SETTING_ADDR + i);
   }
 
   if (buffer[0] != SETTINGS_MAGIC1 || buffer[1] != SETTING_MAGIC2)
   {
     setDefaultSettings(configData);
     return false;
-  
-  
   }
-
 
   uint16_t storeCRC = (buffer[sizeof(configData.rawData) + 3] << 8) | buffer[sizeof(configData.rawData) + 2];
   uint16_t calulateCRC = CRC16(buffer, sizeof(configData.rawData) + 2);
@@ -130,49 +144,64 @@ bool restoreSettings(IMU_config_data_anJoystick_packed &configData)
     setDefaultSettings(configData);
     return false;
   }
-  memcpy(&configData ,buffer + 2 , sizeof(configData.rawData)) ;
-  if(!validateSettings(configData)) {
-        setDefaultSettings(configData);
-        return false ;
+  memcpy(&configData, buffer + 2, sizeof(configData.rawData));
+  if (!validateSettings(configData))
+  {
+    setDefaultSettings(configData);
+    return false;
   }
 
-
-return true ;
-
+  return true;
 }
 
-void saveSetting(IMU_config_data_anJoystick_packed &configData) {
-    
-   uint8_t buffer[SETTING_SIZE + 4]  ;
-   buffer[0] = SETTINGS_MAGIC1 ; 
-   buffer[1] = SETTING_MAGIC2 ;
-   
-   memcpy(buffer + 2 , &configData , SETTING_SIZE) ;
+/*
+brief Save settings to EEPROM
 
-   uint16_t crc = CRC16(buffer , SETTING_SIZE + 2 ) ;
-   buffer[SETTING_SIZE + 2 ] = crc & 0xFF ; 
-   buffer[SETTING_SIZE + 3 ] = (crc >> 8) & 0xFF ; 
-   for(size_t i = 0 ; i <= sizeof(buffer) ; i++  ) {
-     EEPROM.write(SETTING_ADDR + i , buffer[i]) ; 
+ * This function saves the provided configData into EEPROM.
+ * It first writes a magic number to identify the settings, then copies the raw data.
+ * Finally, it calculates and appends a CRC16 checksum for data integrity.
+ *
+ * @param configData Reference to the IMU_config_data_anJoystick_Union structure containing settings to save
+*/
+void saveSetting(IMU_config_data_anJoystick_Union &configData)
+{
 
+  uint8_t buffer[SETTING_SIZE + 4];
+  buffer[0] = SETTINGS_MAGIC1;
+  buffer[1] = SETTING_MAGIC2;
 
-   } 
-   EEPROM.commit() ;
+  memcpy(buffer + 2, configData.rawData, SETTING_SIZE);
 
+  uint16_t crc = CRC16(buffer, SETTING_SIZE + 2);
+  buffer[SETTING_SIZE + 2] = crc & 0xFF;
+  buffer[SETTING_SIZE + 3] = (crc >> 8) & 0xFF;
+  for (size_t i = 0; i < sizeof(buffer); i++)
+  {
+    EEPROM.write(SETTING_ADDR + i, buffer[i]);
+  }
+  EEPROM.commit();
 }
 
-
-
-bool validateSettings(IMU_config_data_anJoystick_packed &configData) {
-    if (configData.configDataIMUJOTISK.Joystick_flex_sensor_rate < 100 || 
-        configData.configDataIMUJOTISK.Joystick_flex_sensor_rate > 1000) {
-        return false;
-    }
-    return true;
+bool validateSettings(IMU_config_data_anJoystick_Union &configData)
+{
+  if (configData.configDataIMUJOTISK.Joystick_flex_sensor_rate < 100 ||
+      configData.configDataIMUJOTISK.Joystick_flex_sensor_rate > 1000)
+  {
+    return false;
+  }
+  return true;
 }
 
+/*
+brief Set default settings for IMU and Joystick
 
-void setDefaultSettings(IMU_config_data_anJoystick_packed &configData)
+ * This function initializes the configData structure with default settings for IMU and Joystick.
+ * It sets the data rates, ranges, and other parameters to predefined values.
+ * The settings are then saved to EEPROM.
+ *
+ * @param configData Reference to the IMU_config_data_anJoystick_Union structure to set default settings
+*/
+void setDefaultSettings(IMU_config_data_anJoystick_Union &configData)
 {
 
   configData.configDataIMUJOTISK.IMU1_accel_gyro_rate = LSM6DS_RATE_12_5_HZ;
@@ -188,75 +217,63 @@ void setDefaultSettings(IMU_config_data_anJoystick_packed &configData)
   configData.configDataIMUJOTISK.IMU2_mag_range = LIS3MDL_RANGE_4_GAUSS;
 
   configData.configDataIMUJOTISK.Joystick_flex_sensor_rate = 100;
-  saveSetting(configData) ; 
-  
+  saveSetting(configData);
 }
 
+/*
+brief Update the calibration status for IMU1 and IMU2
 
+ * This function updates the calibration status in the provided IMU1_euler_calib_status_Union and IMU2_euler_calib_status_Union structures.
+ * It sets the calibration status to 0x01 if calibration is successful, otherwise to 0x00.
+ *
+ * @param imu1Config Reference to the IMU1_euler_calib_status_Union structure
+ * @param imu2Config Reference to the IMU2_euler_calib_status_Union structure
+ * @param calibrationstatus Boolean indicating whether calibration was successful
+*/
+void IMU1updateCalibrationStatus(IMU1_euler_calib_status_Union &imu1Config, bool calibrationstatus)
+{
+  imu1Config.eulerCalibStatus.calibation = calibrationstatus ? 0x01 : 0x00;
+}
+
+void IMU2updateCalibrationStatus(IMU2_euler_calib_status_Union &imu2Config, bool calibrationstatus)
+{
+  imu2Config.eulerCalibStatus.calibation = calibrationstatus ? 0x01 : 0x00;
+}
 
 /*
 brief Load calibration data from EEPROM
 
- * @return true if calibration data was loaded successfully, false otherwise
-
+ * This function initializes the Adafruit_Sensor_Calibration_EEPROM object and attempts to load calibration data.
+ * If successful, it updates the calibration status for both IMU1 and IMU2.
+ * If initialization or loading fails, it sets the calibration status to false.
+ *
+ * @param cal Reference to the Adafruit_Sensor_Calibration_EEPROM object
+ * @param imu1EulerCalibration Reference to the IMU1_euler_calib_status_Union structure
+ * @param imu2EulerCalibration Reference to the IMU2_euler_calib_status_Union structure
+ * @return true if calibration was loaded successfully, false otherwise
 */
-
-bool loadCalibration(IMU1_euler_calib_status_packed &imu1EulerCalibration, IMU2_euler_calib_status_packed &imu2EulerCalibration, calibratee &calibrationData)
+bool loadCalibration(Adafruit_Sensor_Calibration_EEPROM &cal, IMU1_euler_calib_status_Union &imu1EulerCalibration, IMU2_euler_calib_status_Union &imu2EulerCalibration)
 {
-  if (!EEPROM.begin(512))
+
+  if (!cal.begin())
   {
-    Serial.println("Failed to initialize EEPROM");
+    Serial.println("Failed to initialize calibration");
+    IMU1updateCalibrationStatus(imu1EulerCalibration, false);
+    IMU2updateCalibrationStatus(imu2EulerCalibration, false);
+    return false;
+  }
+  if (!cal.loadCalibration())
+  {
+
+    IMU1updateCalibrationStatus(imu1EulerCalibration, false);
+    IMU2updateCalibrationStatus(imu2EulerCalibration, false);
     return false;
   }
 
-  EEPROM.get(CALIBRATION_ADDRESS, imu1EulerCalibration);
-  EEPROM.get(CALIBRATION_ADDRESS + sizeof(IMU1_euler_calib_status_packed), imu2EulerCalibration);
-
-  if (imu1EulerCalibration.eulerCalibStatus.calibation != 0 &&
-      imu2EulerCalibration.eulerCalibStatus.calibation != 0)
-  {
-    calibrationLoaded = true;
-    calibrationData.calibationIMU1 = imu1EulerCalibration.eulerCalibStatus.calibation;
-    calibrationData.calibationIMU2 = imu2EulerCalibration.eulerCalibStatus.calibation;
-
-    imu1EulerCalibration.eulerCalibStatus.calibation = calibrationData.calibationIMU1;
-    imu2EulerCalibration.eulerCalibStatus.calibation = calibrationData.calibationIMU2;
-
-    return true;
-  }
-
-  calibrationLoaded = false;
-  calibrationData.calibationIMU1 = imu1EulerCalibration.eulerCalibStatus.calibation;
-  calibrationData.calibationIMU2 = imu2EulerCalibration.eulerCalibStatus.calibation;
-
-  imu1EulerCalibration.eulerCalibStatus.calibation = calibrationData.calibationIMU1;
-  imu2EulerCalibration.eulerCalibStatus.calibation = calibrationData.calibationIMU2;
-  return false;
+  IMU1updateCalibrationStatus(imu1EulerCalibration, true);
+  IMU2updateCalibrationStatus(imu2EulerCalibration, true);
+  return true;
 }
-
-/*
- bool loadCalibration(Adafruit_Sensor_Calibration_EEPROM &cal){
-
-   if(!cal.begin()) {
-      Serial.println("Failed to initialize calibration");
-      return false;
-   }
-   if(!cal.loadCalibration()) {
-    calibrationLoaded = false ;
-    return false ;
-
-   }
-
-   calibrationLoaded = true ;
-    imu1EulerCalibration.eulerCalibStatus.calibation = cal.accel_zerog[0];
-    imu2EulerCalibration.eulerCalibStatus.calibation = cal.accel_zerog[1];
-
-   return true ;
-
-
- }
-
-*/
 
 /*
 brief Setup BLE Gamepad
@@ -286,7 +303,7 @@ void setupBLEGamepad(BleGamepad &bleGamepad, BleGamepadConfiguration &bleGamepad
   bleGamepad.begin(&bleGamepadConfig);
 }
 
-bool initFuelGauge(Adafruit_MAX17048 &fuelGauge, Overall_status_data_packed &overallStatusDatapPacked)
+bool initFuelGauge(Adafruit_MAX17048 &fuelGauge, Overall_status_data_Union &overallStatusDatapPacked)
 {
   if (!fuelGauge.begin())
   {
@@ -308,7 +325,7 @@ brief Update the overall status data
  * It sets the status code and sensor statuses based on their readiness.
 */
 
-void updateOverallStatusData(Overall_status_data_packed &overallStatusDatapPacked)
+void updateOverallStatusData(Overall_status_data_Union &overallStatusDatapPacked)
 {
   overallStatusDatapPacked.overallStatusData.status_code = statuscode::NO_ERROR;
   overallStatusDatapPacked.overallStatusData.Fuelgause_status = fuelGauge.isDeviceReady() ? statuscode_sensor::RUNNING : statuscode_sensor::FAILED;

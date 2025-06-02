@@ -3,7 +3,7 @@
 uint32_t timestamp;
 bool IMUsAvailable = false;
 
- //static IMU_data_Raw_packed ImuArray[NUM_IMUS] ;
+// static IMU_data_Raw_packed ImuArray[NUM_IMUS] ;
 
 /*
 brief Initializes the IMU sensors and sensor fusion filters.
@@ -23,32 +23,31 @@ bool initIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
              Adafruit_LIS3MDL &lis3mdl2,
              Adafruit_NXPSensorFusion &fillsion1,
              Adafruit_NXPSensorFusion &fillsion2,
-             Overall_status_data_packed &overallStatusDatapPacked)
+             Overall_status_data_Union &overallStatusDatapPacked)
 {
 
     if (!lsm6ds1.begin_I2C(0x6A))
     {
         Serial.println("Failed to find LSM6DS1 chip");
         overallStatusDatapPacked.overallStatusData.Imu1_status = statuscode_sensor::FAILED;
-
         overallStatusDatapPacked.overallStatusData.Imu1_status = statuscode_sensor::FAILED;
-        return false;
+    
     }
     if (!lsm6ds2.begin_I2C(0x6B))
     {
         Serial.println("Failed to find LSM6DS2 chip");
         overallStatusDatapPacked.overallStatusData.Imu2_status = statuscode_sensor::FAILED;
-        return false;
+      
     }
     if (!lis3mdl1.begin_I2C(0x1E))
     {
         Serial.println("Failed to find LIS3MDL chip 1");
-        return false;
+    
     }
     if (!lis3mdl1.begin_I2C(0x1C))
     {
         Serial.println("Failed to find LIS3MDL chip 2");
-        return false;
+    
     }
 
     fillsion1.begin(FILTER_UPDATE_RATE_HZ);
@@ -60,7 +59,6 @@ bool initIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
     IMUsAvailable = true;
     return true;
 }
-
 
 /*
 brief Sets up the data rate for the IMU sensors.
@@ -113,8 +111,8 @@ void readDataIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
                  Adafruit_NXPSensorFusion &fillsion1,
                  Adafruit_NXPSensorFusion &fillsion2,
                  IMU_data_Raw_packed ImuArray[NUM_IMUS],
-                 IMU1_euler_calib_status_packed &imu1EulerCalibration,
-                 IMU2_euler_calib_status_packed &imu2EulerCalibration)
+                 IMU1_euler_calib_status_Union &imu1EulerCalibration,
+                 IMU2_euler_calib_status_Union &imu2EulerCalibration)
 {
 
     if (IMUsAvailable)
@@ -141,35 +139,35 @@ void readDataIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
             return;
         }
         timestamp = millis();
-         ImuArray[0].data_Imu.accelX = accel1.acceleration.x;
-         ImuArray[0].data_Imu.accelY = accel1.acceleration.y;
-         ImuArray[0].data_Imu.accelZ = accel1.acceleration.z;
+        ImuArray[0].data_Imu.accelX = accel1.acceleration.x;
+        ImuArray[0].data_Imu.accelY = accel1.acceleration.y;
+        ImuArray[0].data_Imu.accelZ = accel1.acceleration.z;
 
         ImuArray[0].data_Imu.GyroX = gyro1.gyro.x;
         ImuArray[0].data_Imu.GyroY = gyro1.gyro.y;
         ImuArray[0].data_Imu.GyroZ = gyro1.gyro.z;
 
-         ImuArray[0].data_Imu.MagX = mag1.magnetic.x;
+        ImuArray[0].data_Imu.MagX = mag1.magnetic.x;
         ImuArray[0].data_Imu.MagY = mag1.magnetic.y;
         ImuArray[0].data_Imu.MagZ = mag1.magnetic.z;
 
-         ImuArray[1].data_Imu.accelX = accel2.acceleration.x;
-         ImuArray[1].data_Imu.accelY = accel2.acceleration.y;
-         ImuArray[1].data_Imu.accelZ = accel2.acceleration.z;
+        ImuArray[1].data_Imu.accelX = accel2.acceleration.x;
+        ImuArray[1].data_Imu.accelY = accel2.acceleration.y;
+        ImuArray[1].data_Imu.accelZ = accel2.acceleration.z;
 
-         ImuArray[1].data_Imu.GyroX = gyro2.gyro.x;
-         ImuArray[1].data_Imu.GyroY = gyro2.gyro.y;
+        ImuArray[1].data_Imu.GyroX = gyro2.gyro.x;
+        ImuArray[1].data_Imu.GyroY = gyro2.gyro.y;
         ImuArray[1].data_Imu.GyroZ = gyro2.gyro.z;
 
-         ImuArray[1].data_Imu.MagX = mag2.magnetic.x;
-         ImuArray[1].data_Imu.MagX = mag2.magnetic.y;
-         ImuArray[1].data_Imu.MagX = mag2.magnetic.z;
+        ImuArray[1].data_Imu.MagX = mag2.magnetic.x;
+        ImuArray[1].data_Imu.MagX = mag2.magnetic.y;
+        ImuArray[1].data_Imu.MagX = mag2.magnetic.z;
 
-        fillsion1.update( ImuArray[0].data_Imu.accelX,  ImuArray[0].data_Imu.accelY,  ImuArray[0].data_Imu.accelZ,
-                          ImuArray[0].data_Imu.GyroX,  ImuArray[0].data_Imu.GyroY, ImuArray[0].data_Imu.GyroZ,
-                          ImuArray[0].data_Imu.MagX,  ImuArray[0].data_Imu.MagY,  ImuArray[0].data_Imu.MagZ);
+        fillsion1.update(ImuArray[0].data_Imu.accelX, ImuArray[0].data_Imu.accelY, ImuArray[0].data_Imu.accelZ,
+                         ImuArray[0].data_Imu.GyroX, ImuArray[0].data_Imu.GyroY, ImuArray[0].data_Imu.GyroZ,
+                         ImuArray[0].data_Imu.MagX, ImuArray[0].data_Imu.MagY, ImuArray[0].data_Imu.MagZ);
 
-        fillsion2.update( ImuArray[1].data_Imu.accelX, ImuArray[1].data_Imu.accelY, ImuArray[1].data_Imu.accelZ,
+        fillsion2.update(ImuArray[1].data_Imu.accelX, ImuArray[1].data_Imu.accelY, ImuArray[1].data_Imu.accelZ,
                          ImuArray[1].data_Imu.GyroX, ImuArray[1].data_Imu.GyroY, ImuArray[1].data_Imu.GyroZ,
                          ImuArray[1].data_Imu.MagX, ImuArray[1].data_Imu.MagY, ImuArray[1].data_Imu.MagZ);
 
@@ -186,24 +184,3 @@ void readDataIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
     }
 }
 
-/*
-brief Sends IMU data over BLE if the gamepad is connected.
-@param bleGamepad Reference to the BleGamepad object
-@param imu1DataRawPacked Reference to the packed data structure for IMU 1
-@param imu2DataRawPacked Reference to the packed data structure for IMU 2
-@param imu1EulerCalibration Reference to the packed data structure for IMU 1 Euler calibration status
-@param imu2EulerCalibration Reference to the packed data structure for IMU 2 Euler calibration status
-*/
-void senDataBLE(BleGamepad &bleGamepad,
-                 IMU_data_Raw_packed ImuArray[], 
-                IMU1_euler_calib_status_packed &imu1EulerCalibration,
-                IMU2_euler_calib_status_packed &imu2EulerCalibration)
-{
-    if (bleGamepad.isConnected())
-    {
-        bleGamepad.setterCharacterData(bleGamepad.IMU1RawData, ImuArray[0].rawData, sizeof(ImuArray[0].rawData));
-        bleGamepad.setterCharacterData(bleGamepad.IMU2RawData, ImuArray[1].rawData, sizeof(ImuArray[1].rawData));
-        bleGamepad.setterCharacterData(bleGamepad.IMU1FuseDataCaliStatus, imu1EulerCalibration.rawData, sizeof(imu1EulerCalibration.rawData));
-        bleGamepad.setterCharacterData(bleGamepad.IMU2FuseDataCaliStatus, imu2EulerCalibration.rawData, sizeof(imu2EulerCalibration.rawData));
-    }
-}
