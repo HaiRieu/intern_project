@@ -66,7 +66,7 @@ bool initIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
     }
     timestamp = millis();
     IMUsAvailable = imu1Status || imu2Status;
-    return IMUsAvailable ;
+    return IMUsAvailable;
 }
 
 /*
@@ -81,16 +81,16 @@ void setupIMUDataRate(Adafruit_LSM6DS3TRC &lsm6ds1,
                       Adafruit_LIS3MDL &lis3mdl1,
                       Adafruit_LIS3MDL &lis3mdl2)
 {
-    lsm6ds1.setAccelDataRate(LSM6DS_RATE_12_5_HZ);
-    lsm6ds1.setGyroDataRate(LSM6DS_RATE_12_5_HZ);
+    lsm6ds1.setAccelDataRate(LSM6DS_RATE_104_HZ);
+    lsm6ds1.setGyroDataRate(LSM6DS_RATE_104_HZ);
     lsm6ds1.setAccelRange(LSM6DS_ACCEL_RANGE_2_G);
     lsm6ds1.setGyroRange(LSM6DS_GYRO_RANGE_250_DPS);
 
     lis3mdl1.setDataRate(LIS3MDL_DATARATE_155_HZ);
     lis3mdl1.setRange(LIS3MDL_RANGE_4_GAUSS);
 
-    lsm6ds2.setAccelDataRate(LSM6DS_RATE_12_5_HZ);
-    lsm6ds2.setGyroDataRate(LSM6DS_RATE_12_5_HZ);
+    lsm6ds2.setAccelDataRate(LSM6DS_RATE_104_HZ);
+    lsm6ds2.setGyroDataRate(LSM6DS_RATE_104_HZ);
     lsm6ds2.setAccelRange(LSM6DS_ACCEL_RANGE_2_G);
     lsm6ds2.setGyroRange(LSM6DS_GYRO_RANGE_250_DPS);
 
@@ -120,8 +120,7 @@ void readDataIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
                  Adafruit_NXPSensorFusion &fillsion1,
                  Adafruit_NXPSensorFusion &fillsion2,
                  IMU_data_Raw_packed ImuArray[NUM_IMUS],
-                 IMU1_euler_calib_status_Union &imu1EulerCalibration,
-                 IMU2_euler_calib_status_Union &imu2EulerCalibration)
+                 IMU_euler_calib_status_Union IMUeurle[NUM_IMUS])
 {
 
     if (IMUsAvailable)
@@ -148,45 +147,45 @@ void readDataIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
             return;
         }
         timestamp = millis();
-        ImuArray[0].data_Imu.accelX = accel1.acceleration.x;
-        ImuArray[0].data_Imu.accelY = accel1.acceleration.y;
-        ImuArray[0].data_Imu.accelZ = accel1.acceleration.z;
+        ImuArray[0].data_Imu.accelX_mg = accel1.acceleration.x;
+        ImuArray[0].data_Imu.accelY_mg = accel1.acceleration.y;
+        ImuArray[0].data_Imu.accelZ_mg = accel1.acceleration.z;
 
-        ImuArray[0].data_Imu.GyroX = gyro1.gyro.x;
-        ImuArray[0].data_Imu.GyroY = gyro1.gyro.y;
-        ImuArray[0].data_Imu.GyroZ = gyro1.gyro.z;
+        ImuArray[0].data_Imu.GyroX_rads = gyro1.gyro.x;
+        ImuArray[0].data_Imu.GyroY_rads = gyro1.gyro.y;
+        ImuArray[0].data_Imu.GyroZ_rads = gyro1.gyro.z;
 
-        ImuArray[0].data_Imu.MagX = mag1.magnetic.x;
-        ImuArray[0].data_Imu.MagY = mag1.magnetic.y;
-        ImuArray[0].data_Imu.MagZ = mag1.magnetic.z;
+        ImuArray[0].data_Imu.MagX_uT = mag1.magnetic.x;
+        ImuArray[0].data_Imu.MagY_uT = mag1.magnetic.y;
+        ImuArray[0].data_Imu.MagZ_uT = mag1.magnetic.z;
 
-        ImuArray[1].data_Imu.accelX = accel2.acceleration.x;
-        ImuArray[1].data_Imu.accelY = accel2.acceleration.y;
-        ImuArray[1].data_Imu.accelZ = accel2.acceleration.z;
+        ImuArray[1].data_Imu.accelX_mg = accel2.acceleration.x;
+        ImuArray[1].data_Imu.accelY_mg = accel2.acceleration.y;
+        ImuArray[1].data_Imu.accelZ_mg = accel2.acceleration.z;
 
-        ImuArray[1].data_Imu.GyroX = gyro2.gyro.x;
-        ImuArray[1].data_Imu.GyroY = gyro2.gyro.y;
-        ImuArray[1].data_Imu.GyroZ = gyro2.gyro.z;
+        ImuArray[1].data_Imu.GyroX_rads = gyro2.gyro.x;
+        ImuArray[1].data_Imu.GyroY_rads = gyro2.gyro.y;
+        ImuArray[1].data_Imu.GyroZ_rads = gyro2.gyro.z;
 
-        ImuArray[1].data_Imu.MagX = mag2.magnetic.x;
-        ImuArray[1].data_Imu.MagX = mag2.magnetic.y;
-        ImuArray[1].data_Imu.MagX = mag2.magnetic.z;
+        ImuArray[1].data_Imu.MagX_uT = mag2.magnetic.x;
+        ImuArray[1].data_Imu.MagX_uT = mag2.magnetic.y;
+        ImuArray[1].data_Imu.MagX_uT = mag2.magnetic.z;
 
-        fillsion1.update(ImuArray[0].data_Imu.accelX, ImuArray[0].data_Imu.accelY, ImuArray[0].data_Imu.accelZ,
-                         ImuArray[0].data_Imu.GyroX, ImuArray[0].data_Imu.GyroY, ImuArray[0].data_Imu.GyroZ,
-                         ImuArray[0].data_Imu.MagX, ImuArray[0].data_Imu.MagY, ImuArray[0].data_Imu.MagZ);
+        fillsion1.update(ImuArray[0].data_Imu.accelX_mg, ImuArray[0].data_Imu.accelY_mg, ImuArray[0].data_Imu.accelZ_mg,
+                         ImuArray[0].data_Imu.GyroX_rads, ImuArray[0].data_Imu.GyroY_rads, ImuArray[0].data_Imu.GyroZ_rads,
+                         ImuArray[0].data_Imu.MagX_uT, ImuArray[0].data_Imu.MagY_uT, ImuArray[0].data_Imu.MagZ_uT);
 
-        fillsion2.update(ImuArray[1].data_Imu.accelX, ImuArray[1].data_Imu.accelY, ImuArray[1].data_Imu.accelZ,
-                         ImuArray[1].data_Imu.GyroX, ImuArray[1].data_Imu.GyroY, ImuArray[1].data_Imu.GyroZ,
-                         ImuArray[1].data_Imu.MagX, ImuArray[1].data_Imu.MagY, ImuArray[1].data_Imu.MagZ);
+        fillsion2.update(ImuArray[1].data_Imu.accelX_mg, ImuArray[1].data_Imu.accelY_mg, ImuArray[1].data_Imu.accelZ_mg,
+                         ImuArray[1].data_Imu.GyroX_rads, ImuArray[1].data_Imu.GyroY_rads, ImuArray[1].data_Imu.GyroZ_rads,
+                         ImuArray[1].data_Imu.MagX_uT, ImuArray[1].data_Imu.MagY_uT, ImuArray[1].data_Imu.MagZ_uT);
 
-        imu1EulerCalibration.eulerCalibStatus.EulerRoll = fillsion1.getRoll();
-        imu1EulerCalibration.eulerCalibStatus.EulerPitch = fillsion1.getPitch();
-        imu1EulerCalibration.eulerCalibStatus.EulerYaw = fillsion1.getYaw();
+        IMUeurle[0].eulerCalibStatus.EulerRoll_deg = fillsion1.getRoll();
+        IMUeurle[0].eulerCalibStatus.EulerPitch_deg = fillsion1.getPitch();
+        IMUeurle[0].eulerCalibStatus.EulerYaw_deg = fillsion1.getYaw();
 
-        imu2EulerCalibration.eulerCalibStatus.EulerRoll = fillsion2.getRoll();
-        imu2EulerCalibration.eulerCalibStatus.EulerPitch = fillsion2.getPitch();
-        imu2EulerCalibration.eulerCalibStatus.EulerYaw = fillsion2.getYaw();
+        IMUeurle[1].eulerCalibStatus.EulerRoll_deg = fillsion2.getRoll();
+        IMUeurle[1].eulerCalibStatus.EulerPitch_deg = fillsion2.getPitch();
+        IMUeurle[1].eulerCalibStatus.EulerYaw_deg = fillsion2.getYaw();
     }
     else
     {
