@@ -39,16 +39,16 @@ brief Read analog values from flex sensors and store them in the provided union.
   * @param flexSensorDataUnion Reference to the Flex_sensor_data_Union structure to store sensor data
 
 */
-void ReadAnnalogSensor(Flex_sensor_data_Union &flexSensorDataUnion)
+void ReadAnnalogSensor(FlexDataUnion &flexSensorDataUnion)
 {
   for (int i = 0; i < NUM_FLEX; i++)
   {
     int adcValue = analogRead(FLEX_SENSOR_PINS[i]);
-    flexSensorDataUnion.flexSensorData.Flex_Sensor_Data[i] = mapFlexValue(adcValue);
+    flexSensorDataUnion.flexSensorData.FlexSensorData[i] = mapFlexValue(adcValue);
   }
 }
 
-void checkbuttons(Button_data_Union &buttonDataUnion)
+void checkbuttons(ButtonDataUnion &buttonDataUnion)
 {
   for (int i = 0; i < NUM_BUTTONS; i++)
   {
@@ -63,7 +63,7 @@ void checkbuttons(Button_data_Union &buttonDataUnion)
   }
 }
 
-void readJoystick(Joystick_data_Union &joystickDataUnion)
+void readJoystick(JoystickDataUnion &joystickDataUnion)
 {
 
   joystickDataUnion.joystickData.Xaxis = analogRead(XAXIS_PIN);
@@ -108,5 +108,12 @@ void processMotor()
   digitalWrite(MOTOR_EN_PIN, HIGH);
   delay(500);
   digitalWrite(MOTOR_EN_PIN, LOW);
+}
+
+void readBatteryData(BatteryData &batteryData ,Adafruit_MAX17048 &maxlipo )
+{
+   
+   batteryData.batteryLevel = maxlipo.cellPercent() ;
+
 }
 

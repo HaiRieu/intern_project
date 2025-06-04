@@ -2,11 +2,107 @@
 
 uint32_t timestamp;
 bool IMUsAvailable = false;
-
-// static IMU_data_Raw_packed ImuArray[NUM_IMUS] ;
+bool imu1Status = true;
+bool imu2Status = true;
 
 /*
-brief Initializes the IMU sensors and sensor fusion filters.
+@brief Initializes the first IMU sensors and sensor fusion filter.
+@param lsm6ds Reference to the LSM6DS3TRC sensor
+@param lis3mdl Reference to the LIS3MDL sensor
+@param fusion Reference to the sensor fusion filter
+@param overallStatusDatapPacked Reference to the packed data structure for overall status
+@return true if initialization is successful, false otherwise
+*/
+bool initIMU1(Adafruit_LSM6DS3TRC &lsm6ds,
+              Adafruit_LIS3MDL &lis3mdl,
+              Adafruit_NXPSensorFusion &fusion,
+              OverallStatusDataUnion &overallStatusDatapPacked)
+{
+
+    if (!lsm6ds.begin_I2C(0x6A))
+    {
+        Serial.println("Failed to find LSM6DS1 chip");
+        overallStatusDatapPacked.overallStatusData.Imu1Status = statusCodeSensor::FAILED;
+        imu1Status = false;
+    }
+    else
+    {
+        Serial.println("LSM6DS1 initialized successfully");
+    }
+
+    if (!lis3mdl.begin_I2C(0x1E))
+    {
+        Serial.println("Failed to find LIS3MDL chip ");
+        overallStatusDatapPacked.overallStatusData.Imu1Status = statusCodeSensor::FAILED;
+        imu1Status = false;
+    }
+    else
+    {
+        Serial.println("LIS3MDL1 initialized successfully");
+    }
+
+    if (imu1Status)
+    {
+        fusion.begin(FILTER_UPDATE_RATE_HZ);
+        overallStatusDatapPacked.overallStatusData.Imu1Status = statusCodeSensor::RUNNING;
+    }
+    else
+    {
+        Serial.println("IMU1 initialization FAILED");
+    }
+    return imu1Status;
+}
+
+/*
+@brief Initializes the second IMU sensors and sensor fusion filter.
+@param lsm6ds Reference to the LSM6DS3TRC sensor
+@param lis3mdl Reference to the LIS3MDL sensor
+@param fusion Reference to the sensor fusion filter
+@param overallStatusDatapPacked Reference to the packed data structure for overall status
+@return true if initialization is successful, false otherwise
+*/
+bool initIMU2(Adafruit_LSM6DS3TRC &lsm6ds,
+              Adafruit_LIS3MDL &lis3mdl,
+              Adafruit_NXPSensorFusion &fusion,
+              OverallStatusDataUnion &overallStatusDatapPacked)
+{
+
+    if (!lsm6ds.begin_I2C(0x6B))
+    {
+        Serial.println("Failed to find LSM6DS2 chip");
+        overallStatusDatapPacked.overallStatusData.Imu1Status = statusCodeSensor::FAILED;
+        imu2Status = false;
+    }
+    else
+    {
+        Serial.println("LSM6DS2 initialized successfully");
+    }
+
+    if (!lis3mdl.begin_I2C(0x1C))
+    {
+        Serial.println("Failed to find LIS3MDL2 chip ");
+        overallStatusDatapPacked.overallStatusData.Imu1Status = statusCodeSensor::FAILED;
+        imu2Status = false;
+    }
+    else
+    {
+        Serial.println("LIS3MDL2 initialized successfully");
+    }
+
+    if (imu2Status)
+    {
+        fusion.begin(FILTER_UPDATE_RATE_HZ);
+         overallStatusDatapPacked.overallStatusData.Imu2Status= statusCodeSensor::RUNNING;
+    }
+    else
+    {
+        Serial.println("IMU2 initialization FAILED");
+    }
+    return imu2Status;
+}
+
+/*
+@brief Starts the IMU sensors and initializes the sensor fusion filters.
 @param lsm6ds1 Reference to the first LSM6DS3TRC sensor
 @param lsm6ds2 Reference to the second LSM6DS3TRC sensor
 @param lis3mdl1 Reference to the first LIS3MDL sensor
@@ -14,59 +110,22 @@ brief Initializes the IMU sensors and sensor fusion filters.
 @param fillsion1 Reference to the first sensor fusion filter
 @param fillsion2 Reference to the second sensor fusion filter
 @param overallStatusDatapPacked Reference to the packed data structure for overall status
-@return true if initialization is successful, false otherwise
-
+@return true if at least one IMU is available, false otherwise
 */
-bool initIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
-             Adafruit_LSM6DS3TRC &lsm6ds2,
-             Adafruit_LIS3MDL &lis3mdl1,
-             Adafruit_LIS3MDL &lis3mdl2,
-             Adafruit_NXPSensorFusion &fillsion1,
-             Adafruit_NXPSensorFusion &fillsion2,
-             Overall_status_data_Union &overallStatusDatapPacked)
+bool imuStart(Adafruit_LSM6DS3TRC &lsm6ds1,
+              Adafruit_LSM6DS3TRC &lsm6ds2,
+              Adafruit_LIS3MDL &lis3mdl1,
+              Adafruit_LIS3MDL &lis3mdl2,
+              Adafruit_NXPSensorFusion &fillsion1,
+              Adafruit_NXPSensorFusion &fillsion2,
+              OverallStatusDataUnion &overallStatusDatapPacked)
 {
 
-    bool imu1Status = true;
-    bool imu2Status = true;
+    initIMU1(lsm6ds1, lis3mdl1, fillsion1, overallStatusDatapPacked);
+    initIMU2(lsm6ds2, lis3mdl2, fillsion2, overallStatusDatapPacked);
 
-    if (!lsm6ds1.begin_I2C(0x6A))
-    {
-        Serial.println("Failed to find LSM6DS1 chip");
-        overallStatusDatapPacked.overallStatusData.Imu1_status = statuscode_sensor::FAILED;
-        imu1Status = false;
-    }
-    if (!lsm6ds2.begin_I2C(0x6B))
-    {
-        Serial.println("Failed to find LSM6DS2 chip");
-        overallStatusDatapPacked.overallStatusData.Imu2_status = statuscode_sensor::FAILED;
-        imu2Status = false;
-    }
-    if (!lis3mdl1.begin_I2C(0x1E))
-    {
-        Serial.println("Failed to find LIS3MDL chip 1");
-        overallStatusDatapPacked.overallStatusData.Imu1_status = statuscode_sensor::FAILED;
-        imu1Status = false;
-    }
-    if (!lis3mdl2.begin_I2C(0x1C))
-    {
-        Serial.println("Failed to find LIS3MDL chip 2");
-        overallStatusDatapPacked.overallStatusData.Imu2_status = statuscode_sensor::FAILED;
-        imu2Status = false;
-    }
-
-    if (imu1Status)
-    {
-        fillsion1.begin(FILTER_UPDATE_RATE_HZ);
-        overallStatusDatapPacked.overallStatusData.Imu1_status = statuscode_sensor::RUNNING;
-    }
-    if (imu2Status)
-    {
-        fillsion2.begin(FILTER_UPDATE_RATE_HZ);
-        overallStatusDatapPacked.overallStatusData.Imu2_status = statuscode_sensor::RUNNING;
-    }
-    timestamp = millis();
-    IMUsAvailable = imu1Status || imu2Status;
-    return IMUsAvailable;
+    bool imusAvailable = imu1Status || imu2Status;
+    return imusAvailable;
 }
 
 /*
@@ -119,8 +178,8 @@ void readDataIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
                  Adafruit_Sensor_Calibration_EEPROM &cal,
                  Adafruit_NXPSensorFusion &fillsion1,
                  Adafruit_NXPSensorFusion &fillsion2,
-                 IMU_data_Raw_packed ImuArray[NUM_IMUS],
-                 IMU_euler_calib_status_Union IMUeurle[NUM_IMUS])
+                 IMUDataRawUnion ImuArray[NUM_IMUS],
+                 IMUEulernUnion IMUeurle[NUM_IMUS])
 {
 
     if (IMUsAvailable)
@@ -147,47 +206,45 @@ void readDataIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
             return;
         }
         timestamp = millis();
-        ImuArray[0].data_Imu.accelX_mg = accel1.acceleration.x;
-        ImuArray[0].data_Imu.accelY_mg = accel1.acceleration.y;
-        ImuArray[0].data_Imu.accelZ_mg = accel1.acceleration.z;
+        ImuArray[0].dataImu.accelXmg = accel1.acceleration.x;
+        ImuArray[0].dataImu.accelYmg = accel1.acceleration.y;
+        ImuArray[0].dataImu.accelZmg = accel1.acceleration.z;
 
-        ImuArray[0].data_Imu.GyroX_rads = gyro1.gyro.x;
-        ImuArray[0].data_Imu.GyroY_rads = gyro1.gyro.y;
-        ImuArray[0].data_Imu.GyroZ_rads = gyro1.gyro.z;
+        ImuArray[0].dataImu.GyroXrads = gyro1.gyro.x;
+        ImuArray[0].dataImu.GyroYrads = gyro1.gyro.y;
+        ImuArray[0].dataImu.GyroZrads = gyro1.gyro.z;
 
-        ImuArray[0].data_Imu.MagX_uT = mag1.magnetic.x;
-        ImuArray[0].data_Imu.MagY_uT = mag1.magnetic.y;
-        ImuArray[0].data_Imu.MagZ_uT = mag1.magnetic.z;
+        ImuArray[0].dataImu.MagXuT = mag1.magnetic.x;
+        ImuArray[0].dataImu.MagYuT = mag1.magnetic.y;
+        ImuArray[0].dataImu.MagZuT = mag1.magnetic.z;
 
-        ImuArray[1].data_Imu.accelX_mg = accel2.acceleration.x;
-        ImuArray[1].data_Imu.accelY_mg = accel2.acceleration.y;
-        ImuArray[1].data_Imu.accelZ_mg = accel2.acceleration.z;
+        ImuArray[1].dataImu.accelXmg = accel2.acceleration.x;
+        ImuArray[1].dataImu.accelYmg = accel2.acceleration.y;
+        ImuArray[1].dataImu.accelZmg = accel2.acceleration.z;
 
-        ImuArray[1].data_Imu.GyroX_rads = gyro2.gyro.x;
-        ImuArray[1].data_Imu.GyroY_rads = gyro2.gyro.y;
-        ImuArray[1].data_Imu.GyroZ_rads = gyro2.gyro.z;
+        ImuArray[1].dataImu.GyroXrads = gyro2.gyro.x;
+        ImuArray[1].dataImu.GyroYrads = gyro2.gyro.y;
+        ImuArray[1].dataImu.GyroZrads = gyro2.gyro.z;
 
-        ImuArray[1].data_Imu.MagX_uT = mag2.magnetic.x;
-        ImuArray[1].data_Imu.MagX_uT = mag2.magnetic.y;
-        ImuArray[1].data_Imu.MagX_uT = mag2.magnetic.z;
+        ImuArray[1].dataImu.MagXuT = mag2.magnetic.x;
+        ImuArray[1].dataImu.MagXuT = mag2.magnetic.y;
+        ImuArray[1].dataImu.MagXuT = mag2.magnetic.z;
 
-        fillsion1.update(ImuArray[0].data_Imu.accelX_mg, ImuArray[0].data_Imu.accelY_mg, ImuArray[0].data_Imu.accelZ_mg,
-                         ImuArray[0].data_Imu.GyroX_rads, ImuArray[0].data_Imu.GyroY_rads, ImuArray[0].data_Imu.GyroZ_rads,
-                         ImuArray[0].data_Imu.MagX_uT, ImuArray[0].data_Imu.MagY_uT, ImuArray[0].data_Imu.MagZ_uT);
+        fillsion1.update(ImuArray[0].dataImu.accelXmg, ImuArray[0].dataImu.accelYmg, ImuArray[0].dataImu.accelZmg,
+                         ImuArray[0].dataImu.GyroXrads, ImuArray[0].dataImu.GyroYrads, ImuArray[0].dataImu.GyroZrads,
+                         ImuArray[0].dataImu.MagXuT, ImuArray[0].dataImu.MagYuT, ImuArray[0].dataImu.MagZuT);
 
-        fillsion2.update(ImuArray[1].data_Imu.accelX_mg, ImuArray[1].data_Imu.accelY_mg, ImuArray[1].data_Imu.accelZ_mg,
-                         ImuArray[1].data_Imu.GyroX_rads, ImuArray[1].data_Imu.GyroY_rads, ImuArray[1].data_Imu.GyroZ_rads,
-                         ImuArray[1].data_Imu.MagX_uT, ImuArray[1].data_Imu.MagY_uT, ImuArray[1].data_Imu.MagZ_uT);
+        fillsion2.update(ImuArray[1].dataImu.accelXmg, ImuArray[1].dataImu.accelYmg, ImuArray[1].dataImu.accelZmg,
+                         ImuArray[1].dataImu.GyroXrads, ImuArray[1].dataImu.GyroYrads, ImuArray[1].dataImu.GyroZrads,
+                         ImuArray[1].dataImu.MagXuT, ImuArray[1].dataImu.MagYuT, ImuArray[1].dataImu.MagZuT);
 
-        IMUeurle[0].eulerCalibStatus.EulerRoll_deg = fillsion1.getRoll();
-        IMUeurle[0].eulerCalibStatus.EulerPitch_deg = fillsion1.getPitch();
-        IMUeurle[0].eulerCalibStatus.EulerYaw_deg = fillsion1.getYaw();
+        IMUeurle[0].eulerCalibStatus.EulerRolldeg = fillsion1.getRoll();
+        IMUeurle[0].eulerCalibStatus.EulerPitchdeg = fillsion1.getPitch();
+        IMUeurle[0].eulerCalibStatus.EulerYawdeg = fillsion1.getYaw();
 
-        IMUeurle[1].eulerCalibStatus.EulerRoll_deg = fillsion2.getRoll();
-        IMUeurle[1].eulerCalibStatus.EulerPitch_deg = fillsion2.getPitch();
-        IMUeurle[1].eulerCalibStatus.EulerYaw_deg = fillsion2.getYaw();
+        IMUeurle[1].eulerCalibStatus.EulerRolldeg = fillsion2.getRoll();
+        IMUeurle[1].eulerCalibStatus.EulerPitchdeg = fillsion2.getPitch();
+        IMUeurle[1].eulerCalibStatus.EulerYawdeg = fillsion2.getYaw();
     }
-    else
-    {
-    }
+    
 }

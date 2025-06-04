@@ -2,9 +2,6 @@
 #include "functiondef.h" 
 
 
-
-
-
 /*
 brief Setup BLE Gamepad
 
@@ -17,7 +14,7 @@ void setupBLEGamepad(BleGamepad &bleGamepad, BleGamepadConfiguration &bleGamepad
   bleGamepadConfig.setAutoReport(false);
   bleGamepadConfig.setAutoReport(false);
   bleGamepadConfig.setControllerType(CONTROLLER_TYPE_GAMEPAD);
-  //bleGamepadConfig.setButtonCount(numOfButtons);
+  bleGamepadConfig.setButtonCount(NUM_BUTTONS);
  // bleGamepadConfig.setHatSwitchCount(numOfHatSwitches);
   bleGamepadConfig.setVid(0xe502);
   bleGamepadConfig.setPid(0xabcd);
@@ -43,11 +40,23 @@ brief Sends IMU data over BLE if the gamepad is connected.
 @param imu2EulerCalibration Reference to the packed data structure for IMU 2 Euler calibration status
 */
 void senDataBLE(BleGamepad &bleGamepad,
-                IMU_data_Raw_packed ImuArray[],
-               IMU_euler_calib_status_Union IMUeurle[NUM_IMUS])
+                JoystickDataUnion &joystickDataUnion,
+                IMUDataRawUnion ImuArray[],
+               IMUEulernUnion IMUeurle[])
 {
     if (bleGamepad.isConnected())
     {
+        
+        int16_t Xaxis = map(joystickDataUnion.joystickData.Xaxis , 0 , 4095 , -32768 , 32767); 
+        int16_t Yaxis = map(joystickDataUnion.joystickData.Yaxis , 0 , 4095 ,-32768 ,32767 );
+         bleGamepad.setAxes(Xaxis,Y_AXIS) ;
+        if(joystickDataUnion.joystickData.joystickButton ) {
+            bleGamepad.press(1);
+        } else {
+            bleGamepad.release(1);
+        }
+        bleGamepad.sendReport() ; 
+
         bleGamepad.setterCharacterData(bleGamepad.IMU1RawData, ImuArray[0].rawData, sizeof(ImuArray[0].rawData));
         bleGamepad.setterCharacterData(bleGamepad.IMU2RawData, ImuArray[1].rawData, sizeof(ImuArray[1].rawData));
         bleGamepad.setterCharacterData(bleGamepad.IMU1FuseDataCaliStatus, IMUeurle[0].rawData, sizeof(IMUeurle[0].rawData));
