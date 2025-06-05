@@ -6,7 +6,7 @@
 void appsetup();
 void appprocess();
 
-void SystemInit();
+void systemInit();
 
 bool restoreSettings(EEPROMDataCheckUnion &configData);
 
@@ -15,41 +15,37 @@ void saveSetting(EEPROMDataCheckUnion &configData);
 void resetEEPROMDefaul(EEPROMDataCheckUnion &configData);
 
 
-bool initIMU1(Adafruit_LSM6DS3TRC &lsm6ds,
-              Adafruit_LIS3MDL &lis3mdl,
-              Adafruit_NXPSensorFusion &fusion,
-              OverallStatusDataUnion &overallStatusDatapPacked);
+bool imu1Start(Adafruit_LSM6DS3TRC &lsm6ds,
+                  Adafruit_LIS3MDL &lis3mdl,
+                  uint8_t addressLsm6ds,
+                  uint8_t addressLis3mdl,
+                  OverallStatusDataUnion &overallDataUnion,
+                  Adafruit_NXPSensorFusion &fusionImu);     
+                  
+bool imu2Start(Adafruit_LSM6DS3TRC &lsm6ds,
+                  Adafruit_LIS3MDL &lis3mdl,
+                  uint8_t addressLsm6ds,
+                  uint8_t addressLis3mdl,
+                  OverallStatusDataUnion &overallDataUnion,
+                  Adafruit_NXPSensorFusion &fusionImu);                    
+             
+void setupIMU1DataRate(Adafruit_LSM6DS3TRC &lsm6ds1, Adafruit_LIS3MDL &lis3mdl1);
+void setupIMU2DataRate(Adafruit_LSM6DS3TRC &lsm6ds2, Adafruit_LIS3MDL &lis3mdl2);
 
-bool initIMU2(Adafruit_LSM6DS3TRC &lsm6ds,
-              Adafruit_LIS3MDL &lis3mdl,
-              Adafruit_NXPSensorFusion &fusion,
-              OverallStatusDataUnion &overallStatusDatapPacked);
-
-bool imuStart(Adafruit_LSM6DS3TRC &lsm6ds1,
-              Adafruit_LSM6DS3TRC &lsm6ds2,
-              Adafruit_LIS3MDL &lis3mdl1,
-              Adafruit_LIS3MDL &lis3mdl2,
-              Adafruit_NXPSensorFusion &fillsion1,
-              Adafruit_NXPSensorFusion &fillsion2,
-              OverallStatusDataUnion &overallStatusDatapPacked);                
-
-void setupIMUDataRate(Adafruit_LSM6DS3TRC &lsm6ds1,
-                      Adafruit_LSM6DS3TRC &lsm6ds2,
-                      Adafruit_LIS3MDL &lis3mdl1,
-                      Adafruit_LIS3MDL &lis3mdl2);
-
-void setupIMUInterrupts(Adafruit_LSM6DS3TRC &lsm6ds1,
-                        Adafruit_LSM6DS3TRC &lsm6ds2,
-                        Adafruit_LIS3MDL &lis3mdl1,
-                        Adafruit_LIS3MDL &lis3mdl2);
+void setupIMU1Interrupts(Adafruit_LSM6DS3TRC &lsm6ds1,Adafruit_LIS3MDL &lis3mdl1);
+void setupIMU2Interrupts(Adafruit_LSM6DS3TRC &lsm6ds2,Adafruit_LIS3MDL &lis3mdl2);
 
 void IRAM_ATTR imu1InterruptHandler();
 
 void IRAM_ATTR imu2InterruptHandler();
 
-bool loadCalibration(Adafruit_Sensor_Calibration_EEPROM &calIMU1,
-                     Adafruit_Sensor_Calibration_EEPROM &CalIMU2,
-                     IMUEulernUnion imuEulerCalibration[NUM_IMUS]);
+bool loadCalibrationImu1(Adafruit_Sensor_Calibration_EEPROM &calIMU,
+                     uint8_t addressEEPROM ,
+                     IMUEulernUnion &imuEulerCalibration);
+
+bool loadCalibrationImu2(Adafruit_Sensor_Calibration_EEPROM &calIMU,
+                     uint8_t addressEEPROM ,
+                     IMUEulernUnion imuEulerCalibration);
 
 void setupBLEGamepad(BleGamepad &bleGamepad,
                      BleGamepadConfiguration &bleGamepadConfig);
@@ -64,19 +60,20 @@ void cycleRGBOnce();
 void processMotor();
 
 void updateOverallStatusData(OverallStatusDataUnion &overallStatusDatapPacked);
-
 void readDataIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
                  Adafruit_LSM6DS3TRC &lsm6ds2,
                  Adafruit_LIS3MDL &lis3mdl1,
                  Adafruit_LIS3MDL &lis3mdl2,
-                 Adafruit_Sensor_Calibration_EEPROM &cal,
-                 Adafruit_NXPSensorFusion &fillsion1,
-                 Adafruit_NXPSensorFusion &fillsion2,
+                 Adafruit_Sensor_Calibration_EEPROM &cal1,
+                 Adafruit_Sensor_Calibration_EEPROM &cal2,   
+                 Adafruit_NXPSensorFusion &fusion1,
+                 Adafruit_NXPSensorFusion &fusion2,
                  IMUDataRawUnion ImuArray[NUM_IMUS],
-                 IMUEulernUnion IMUeurle[NUM_IMUS]);
+                 IMUEulernUnion &IMUeurle1,
+                 IMUEulernUnion &IMUeurle2);
 
 float mapFlexValue(int adcValue);
-void ReadAnnalogSensor(FlexDataUnion &flexSensorDataUnion);
+void readAnnalogSensor(FlexDataUnion &flexSensorDataUnion);
 void checkbuttons(ButtonDataUnion &buttonDataUnion);
 void readJoystick(JoystickDataUnion &joystickDataUnion);
 

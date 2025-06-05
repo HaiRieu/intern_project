@@ -6,7 +6,7 @@ const int BUTTON_PINS[NUM_BUTTONS] = {0, 1, 2, 3};
 /*
 brief Initialize the system by setting up pin modes and initial states.
 */
-void SystemInit()
+void systemInit()
 {
 
   pinMode(VSVY_EN_PIN, OUTPUT);
@@ -39,7 +39,7 @@ brief Read analog values from flex sensors and store them in the provided union.
   * @param flexSensorDataUnion Reference to the Flex_sensor_data_Union structure to store sensor data
 
 */
-void ReadAnnalogSensor(FlexDataUnion &flexSensorDataUnion)
+void readAnnalogSensor(FlexDataUnion &flexSensorDataUnion)
 {
   for (int i = 0; i < NUM_FLEX; i++)
   {

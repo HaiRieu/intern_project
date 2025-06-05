@@ -19,6 +19,10 @@
 #define MODEL_NUMBER "DegapVrGlove"
 #define MANUFACTURER "NUS/Seamless"
 #define HARDWARE_REVISION "00.00.01"
+#define ADDRESS_LSM6DS1 0x6A
+#define ADDRESS_LSM6DS2 0x6B
+#define ADDRESS_LIS3MDL1 0x1E
+#define ADDRESS_LIS3MDL2 0x1C
 #define IMU1_INT_PIN 40
 #define IMU2_INT_PIN 38
 #define I2C_SDA_PIN 34
@@ -37,7 +41,7 @@
 #define BYTE_CHECK2 0x54 
 #define SETTING_ADDR 0x00
 #define IMU1_CAL_EEPROM_ADDR  0x50   
-#define IMU2_CAL_EEPROM_ADDR  0x51  
+#define IMU2_CAL_EEPROM_ADDR  0x94
 #define EEPROM_TOTAL_SIZE (sizeof(IMUAndJoystickCheck))
 #define XAXIS_PIN 3 
 #define YAXIS_PIN 4
