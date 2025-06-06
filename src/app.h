@@ -46,10 +46,17 @@
 #define XAXIS_PIN 3 
 #define YAXIS_PIN 4
 #define JOYSTICK_BUTTON_PIN 5
-#define FLEX_MIN 200 
-#define FLEX_MAX 3500 
-#define FORCE_MIN 
-#define FORCE_MAX 
+#define FLEX_POINT_1 {500,0.0f}
+#define FLEX_POINT_2 {650,15.0f}
+#define FLEX_POINT_3 {800,30.0f}
+#define FLEX_POINT_4 {950,45.0f}
+#define FLEX_POINT_5 {1100,60.0f}
+#define FLEX_POINT_6 {1250,75.0f}
+#define FLEX_POINT_7 {1400,90.0f}
+#define FLEX_POINT_8 {1550,105.0f}
+#define FLEX_POINT_9 {1700,120.0f}
+#define FORCE_MIN 0
+#define FORCE_MAX 1000
 #define FG_CHECK_INTERVAL 1000 
 
 
@@ -217,17 +224,18 @@ typedef union __attribute__((packed))
 
 } FlexDataUnion;
 
+typedef struct __attribute__((packed)) 
+{
+  float adcValue ; 
+  float degrees ; 
+} FlexDataPoint  ; 
+    
 /*
 brief Structure to hold force sensor data
 */
 typedef struct __attribute__((packed)) {
   float ForceDataKOhm ;
 } ForceData;
-
-typedef union __attribute__((packed)) {
-  ForceData forceData;
-  uint8_t rawData[4];
-} ForceDataUnion;
 
 /*
 brief Structure to hold button data for the gamepad

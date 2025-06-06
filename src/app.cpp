@@ -16,11 +16,11 @@ bool imuDataIMU2Ready = false;
 static ImuJoystickUnion configData;
 static EEPROMDataCheckUnion configDataCheckUnion;
 static OverallStatusDataUnion overallStatusDataUnion;
-static IMUEulernUnion imuEulerCalibration1, 
-                      imuEulerCalibration2;
+static IMUEulernUnion imuEulerCalibration1, imuEulerCalibration2;
 static FlexDataUnion flexSensorDataUnion;
-static ForceDataUnion forceSensorDataUnion;
+static ForceData forceSensorData;
 static IMUDataRawUnion imuDataRawUnion[NUM_IMUS];
+static ButtonDataUnion buttonDataUnion; 
 
 unsigned long lastFlexSensorReadTime = 0;
 unsigned long readFlexSensorInterval = 100;
@@ -49,21 +49,17 @@ void appsetup()
     Serial.println("Fuel gauge initialization failed");
   }
 
-  if (imu1Start(lsm6ds1, lis3mdl1, ADDRESS_LSM6DS1, ADDRESS_LIS3MDL1, overallStatusDataUnion, fusion1))
+  if (imuStart(lsm6ds1, lis3mdl1, lsm6ds2, lis3mdl2,
+               ADDRESS_LSM6DS1, ADDRESS_LIS3MDL1, ADDRESS_LSM6DS2, ADDRESS_LIS3MDL2,
+               overallStatusDataUnion, fusion1, fusion2))
   {
-    Serial.println("IMU1 initialized successfully");
-    setupIMU1DataRate(lsm6ds1, lis3mdl1);
-    setupIMU1Interrupts(lsm6ds1, lis3mdl1);
-    loadCalibrationImu1(calibrationImu1, IMU1_CAL_EEPROM_ADDR, imuEulerCalibration1);
+    Serial.println("IMU initialized successfully");
+    setupIMUDataRate(lsm6ds1, lis3mdl1, lsm6ds2, lis3mdl2);
+    loadCalibrationImu(calibrationImu1, calibrationImu2, IMU1_CAL_EEPROM_ADDR, IMU2_CAL_EEPROM_ADDR,
+                       imuEulerCalibration1, imuEulerCalibration2);
+    setupImuInterrupts(lsm6ds1, lis3mdl1, lsm6ds2, lis3mdl2);
   }
 
-  if (imu2Start(lsm6ds2, lis3mdl2, ADDRESS_LSM6DS2, ADDRESS_LIS3MDL2, overallStatusDataUnion, fusion2))
-  {
-    Serial.println("IMU2 initialized successfully");
-    setupIMU2DataRate(lsm6ds2, lis3mdl2);
-    setupIMU2Interrupts(lsm6ds2, lis3mdl2);
-    loadCalibrationImu1(calibrationImu2, IMU2_CAL_EEPROM_ADDR, imuEulerCalibration1);
-  }
   setupBLEGamepad(bleGamepad, bleGamepadConfig);
   processMotor();
   cycleRGBOnce();
@@ -72,20 +68,25 @@ void appsetup()
 
 void appprocess()
 {
-  if (imuDataIMU1Ready)
+  if (imuDataIMU1Ready || imuDataIMU2Ready )
   {
-    readDataIMU(lsm6ds1, lsm6ds2, lis3mdl1, lis3mdl2, 
-                calibrationImu1, calibrationImu2, fusion1, fusion2, 
-                imuDataRawUnion, imuEulerCalibration1 , imuEulerCalibration2);
-                
+    readDataIMU(lsm6ds1, lsm6ds2, lis3mdl1, lis3mdl2,
+                calibrationImu1, calibrationImu2, fusion1, fusion2,
+                imuDataRawUnion, imuEulerCalibration1, imuEulerCalibration2);
+
     imuDataIMU1Ready = false;
   }
 
   if (millis() - lastFlexSensorReadTime >= readFlexSensorInterval)
   {
-    readAnnalogSensor(flexSensorDataUnion);
+    readFlexSensor(flexSensorDataUnion);
+    readForceSensor(forceSensorData);
+    checkbuttons(buttonDataUnion);
     lastFlexSensorReadTime = millis();
   }
+
+
+
 }
 /*
 @brief Calculate CRC16 checksum
@@ -209,83 +210,6 @@ void resetEEPROMDefaul(EEPROMDataCheckUnion &configData)
 }
 
 /*
-@brief Initialize IMU1 with LSM6DS3TRC and LIS3MDL sensors
-
- * This function initializes the LSM6DS3TRC and LIS3MDL sensors for IMU1.
- * It sets the data rates, ranges, and other parameters based on the provided configuration.
- * The function also checks if the sensors are ready and updates the overall status data.
- *
- * @param lsm6ds Reference to the LSM6DS3TRC sensor object
- * @param lis3mdl Reference to the LIS3MDL sensor object
- * @param addressLSM6DS Address of the LSM6DS3TRC sensor
- * @param addressLIS3MD Address of the LIS3MDL sensor
- * @param overallStatusData Reference to the OverallStatusDataUnion structure to update status
- * @param fusion Reference to the Adafruit_NXPSensorFusion object for sensor fusion
- * @return true if IMU1 is initialized successfully, false otherwise
-*/
-bool loadCalibrationImu1(Adafruit_Sensor_Calibration_EEPROM &calIMU,
-                         uint8_t addressEEPROM,
-                         IMUEulernUnion &imuEulerCalibration)
-{
-  bool calibrationStatus = false;
-  if (calIMU.begin(addressEEPROM))
-  {
-    switch (addressEEPROM)
-    {
-    case IMU1_CAL_EEPROM_ADDR:
-      Serial.println("IMU1 calibration EEPROM initialized successfully");
-      calibrationStatus = true;
-      imuEulerCalibration.eulerCalibStatus.calibation = true;
-      break;
-    default:
-      Serial.println("Unknown EEPROM address for IMU1 calibration");
-      calibrationStatus = false;
-      imuEulerCalibration.eulerCalibStatus.calibation = false;
-      break;
-    }
-  }
-
-  return calibrationStatus;
-}
-
-/*
-@brief Load calibration data for IMU1 from EEPROM
-
- * This function loads the calibration data for IMU1 from the specified EEPROM address.
- * It initializes the Adafruit_Sensor_Calibration_EEPROM object and checks if the calibration was successful.
- * The function updates the imuEulerCalibration structure with the calibration status.
- *
- * @param calIMU Reference to the Adafruit_Sensor_Calibration_EEPROM object
- * @param addressEEPROM Address of the EEPROM where calibration data is stored
- * @param imuEulerCalibration Reference to the IMUEulernUnion structure to store calibration data
- * @return true if calibration data was loaded successfully, false otherwise
-*/
-bool loadCalibrationImu2(Adafruit_Sensor_Calibration_EEPROM &calIMU,
-                         uint8_t addressEEPROM,
-                         IMUEulernUnion imuEulerCalibration)
-{
-  bool calibrationStatus = false;
-  if (calIMU.begin(addressEEPROM))
-  {
-    switch (addressEEPROM)
-    {
-    case IMU2_CAL_EEPROM_ADDR:
-      Serial.println("IMU2 calibration EEPROM initialized successfully");
-      calibrationStatus = true;
-      imuEulerCalibration.eulerCalibStatus.calibation = true;
-      break;
-    default:
-      Serial.println("Unknown EEPROM address for IMU2 calibration");
-      calibrationStatus = false;
-      imuEulerCalibration.eulerCalibStatus.calibation = false;
-      break;
-    }
-  }
-
-  return calibrationStatus;
-}
-
-/*
 @brief Initialize the fuel gauge (MAX17048)
 
  * This function initializes the MAX17048 fuel gauge sensor.
@@ -317,53 +241,58 @@ bool initFuelGauge(Adafruit_MAX17048 &fuelGauge, OverallStatusDataUnion &overall
  * It sets the status code and sensor statuses based on their readiness.
 */
 
-void updateOverallStatusData(OverallStatusDataUnion &overallStatusDatapPacked)
+void updateOverallStatusData(OverallStatusDataUnion &overallStatusData)
 {
-  overallStatusDatapPacked.overallStatusData.statusode = statusCode::NO_ERROR;
-  overallStatusDatapPacked.overallStatusData.FuelgauseStatus = fuelGauge.isDeviceReady() ? statusCodeSensor::RUNNING : statusCodeSensor::FAILED;
+  overallStatusData.overallStatusData.statusode = statusCode::NO_ERROR;
+  overallStatusData.overallStatusData.FuelgauseStatus = fuelGauge.isDeviceReady() ? statusCodeSensor::RUNNING : statusCodeSensor::FAILED;
 
   if (imuDataIMU1Ready && imuDataIMU2Ready)
   {
-    overallStatusDatapPacked.overallStatusData.Imu1Status = statusCodeSensor::RUNNING;
-    overallStatusDatapPacked.overallStatusData.Imu2Status = statusCodeSensor::RUNNING;
+    overallStatusData.overallStatusData.Imu1Status = statusCodeSensor::RUNNING;
+    overallStatusData.overallStatusData.Imu2Status = statusCodeSensor::RUNNING;
   }
   else
   {
-    overallStatusDatapPacked.overallStatusData.Imu1Status = statusCodeSensor::FAILED;
-    overallStatusDatapPacked.overallStatusData.Imu2Status = statusCodeSensor::FAILED;
+    overallStatusData.overallStatusData.Imu1Status = statusCodeSensor::FAILED;
+    overallStatusData.overallStatusData.Imu2Status = statusCodeSensor::FAILED;
   }
 }
 
 /*
-@brief Setup the data rate for IMU1 and LIS3MDL1 sensors
+@brief Setup interrupts for IMU1 and IMU2
 
- * This function configures the data rate for the LSM6DS3TRC and LIS3MDL sensors.
- * It sets the accelerometer and gyroscope data rates, as well as the magnetometer data rate.
- * The settings are based on the values stored in the configDataCheckUnion structure.
+ * This function configures the interrupt pins for IMU1 and IMU2.
+ * It sets the pin modes, attaches interrupt handlers, and configures the interrupt settings for both IMUs.
+ * If the IMUs are not enabled, it does not configure their interrupts.
+ *
+ * @param lsm6ds1 Reference to the first LSM6DS3TRC sensor
+ * @param lis3mdl1 Reference to the first LIS3MDL sensor
+ * @param lsm6ds2 Reference to the second LSM6DS3TRC sensor
+ * @param lis3mdl2 Reference to the second LIS3MDL sensor
 */
-void setupIMU1Interrupts(Adafruit_LSM6DS3TRC &lsm6ds1, Adafruit_LIS3MDL &lis3mdl1)
+void setupImuInterrupts(Adafruit_LSM6DS3TRC &lsm6ds1, Adafruit_LIS3MDL &lis3mdl1,
+                         Adafruit_LSM6DS3TRC &lsm6ds2, Adafruit_LIS3MDL &lis3mdl2)
 {
-  pinMode(IMU1_INT_PIN, INPUT);
-  attachInterrupt(digitalPinToInterrupt(IMU1_INT_PIN), imu1InterruptHandler, LOW);
-  lsm6ds1.configInt1(false, false, true);
-  lis3mdl1.configInterrupt(true, true, true, false, false, true);
-  Serial.println("IMU1 interrupts configured");
-}
 
-/*
-@brief Setup the data rate for IMU2 and LIS3MDL2 sensors
+  if (getImu1Status())
+  {
 
- * This function configures the data rate for the LSM6DS3TRC and LIS3MDL sensors.
- * It sets the accelerometer and gyroscope data rates, as well as the magnetometer data rate.
- * The settings are based on the values stored in the configDataCheckUnion structure.
-*/
-void setupIMU2Interrupts(Adafruit_LSM6DS3TRC &lsm6ds2, Adafruit_LIS3MDL &lis3mdl2)
-{
-  pinMode(IMU2_INT_PIN, INPUT);
-  attachInterrupt(digitalPinToInterrupt(IMU2_INT_PIN), imu2InterruptHandler, LOW);
-  lsm6ds2.configInt1(false, false, true);
-  lis3mdl2.configInterrupt(true, true, true, false, false, true);
-  Serial.println("IMU2 interrupts configured");
+    pinMode(IMU1_INT_PIN, INPUT);
+    attachInterrupt(digitalPinToInterrupt(IMU1_INT_PIN), imu1InterruptHandler, LOW);
+    lsm6ds1.configInt1(false, false, true);
+    lis3mdl1.configInterrupt(true, true, true, false, false, true);
+    Serial.println("IMU1 interrupts configured");
+  }
+
+  if (getImu2Status())
+  {
+
+    pinMode(IMU2_INT_PIN, INPUT);
+    attachInterrupt(digitalPinToInterrupt(IMU2_INT_PIN), imu2InterruptHandler, LOW);
+    lsm6ds2.configInt1(false, false, true);
+    lis3mdl2.configInterrupt(true, true, true, false, false, true);
+    Serial.println("IMU2 interrupts configured");
+  }
 }
 
 /*

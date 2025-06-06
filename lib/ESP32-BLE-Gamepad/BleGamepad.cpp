@@ -1480,7 +1480,7 @@ class CustomCharacteristicCallbacks: public NimBLECharacteristicCallbacks {
             {
                 bleGamepad->isRightSize = 1;
             }
-            else
+            else 
             {
                 bleGamepad->isRightSize = 0;
             }
