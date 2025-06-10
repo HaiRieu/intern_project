@@ -1,9 +1,6 @@
 
 #include "functiondef.h"
 
-
-
-
 /*
 brief Setup BLE Gamepad
  * This function initializes the BLE Gamepad with the specified configuration.
@@ -27,7 +24,6 @@ void setupBLEGamepad(BleGamepad &bleGamepad, BleGamepadConfiguration &bleGamepad
     bleGamepadConfig.setAxesMax(0x7FFF);
     bleGamepad.begin(&bleGamepadConfig);
 }
-
 
 /*
 @brief Function to handle writing joystick data to BLE Gamepad and saving it to EEPROM.
@@ -138,7 +134,8 @@ void configureImu1MagFreqHz(EEPROMDataCheckUnion &configData, uint8_t rateValue)
 @param rateValue The rate value to configure the IMU1 accelerometer range in G
 This function sets the IMU1 accelerometer range in G based on the provided rate value. It maps the rate value to a specific LSM6DS accelerometer range constant.
 */
-void configureImu1AccelRangeG(EEPROMDataCheckUnion &configData, uint8_t rateValue) {
+void configureImu1AccelRangeG(EEPROMDataCheckUnion &configData, uint8_t rateValue)
+{
     switch (rateValue)
     {
     case 0:
@@ -203,7 +200,7 @@ void configureImu1GyroRangeDps(EEPROMDataCheckUnion &configData, uint8_t rateVal
 @param rateValue The rate value to configure the IMU1 magnetometer range in Gauss
 This function sets the IMU1 magnetometer range in Gauss based on the provided rate value. It maps the rate value to a specific LIS3MDL range constant.
 */
-void  configureImu1MagRangeGaus(EEPROMDataCheckUnion &configData, uint8_t rateValue)
+void configureImu1MagRangeGaus(EEPROMDataCheckUnion &configData, uint8_t rateValue)
 {
     switch (rateValue)
     {
@@ -314,7 +311,6 @@ void configureImu2MagFreqHz(EEPROMDataCheckUnion &configData, uint8_t rateValue)
         break;
     }
 }
-
 
 /*
 @brief Function to configure the IMU2 accelerometer range in G based on the provided rate value.
@@ -433,7 +429,7 @@ void onWrieconfig(EEPROMDataCheckUnion &configData, ImuJoystickUnion &imuJoystic
     configureImu1MagFreqHz(configData, imuJoystickUnion.configDataImuJOTISK.IMU1MagFreqHz);
     configureImu1AccelRangeG(configData, imuJoystickUnion.configDataImuJOTISK.IMU1AccelRangeG);
     configureImu1GyroRangeDps(configData, imuJoystickUnion.configDataImuJOTISK.IMU1GyroRangeDps);
-    configureImu1MagRangeGaus(configData, imuJoystickUnion.configDataImuJOTISK.IMU1MagRangeGaus); 
+    configureImu1MagRangeGaus(configData, imuJoystickUnion.configDataImuJOTISK.IMU1MagRangeGaus);
 
     configureIMU2AccelGyroRate(configData, imuJoystickUnion.configDataImuJOTISK.IMU2AccelGyroFreqHz);
     configureImu2MagFreqHz(configData, imuJoystickUnion.configDataImuJOTISK.IMU2MagFreqHz);
@@ -442,7 +438,6 @@ void onWrieconfig(EEPROMDataCheckUnion &configData, ImuJoystickUnion &imuJoystic
     configureImu2MagRangeGauss(configData, imuJoystickUnion.configDataImuJOTISK.IMU2MagRangeGauss);
 
     saveSetting(configData);
-
 }
 
 /*
@@ -455,17 +450,20 @@ brief Sends IMU data over BLE if the gamepad is connected.
 */
 void senDataBLE(BleGamepad &bleGamepad,
                 JoystickDataUnion &joystickDataUnion,
-                IMUDataRawUnion ImuArray[],
+                IMUDataRawUnion &imu1Data,
+                IMUDataRawUnion &imu2Data,
                 IMUEulernUnion &IMU1eurle,
                 IMUEulernUnion &IMU2eurle)
 {
     if (bleGamepad.isConnected())
     {
-        bleGamepad.setterCharacterData(bleGamepad.IMU1RawData, ImuArray[0].rawData, sizeof(ImuArray[0].rawData));
-        bleGamepad.setterCharacterData(bleGamepad.IMU2RawData, ImuArray[1].rawData, sizeof(ImuArray[1].rawData));
+        bleGamepad.setterCharacterData(bleGamepad.IMU1RawData, imu1Data.rawData, sizeof(imu1Data.rawData));
+        bleGamepad.setterCharacterData(bleGamepad.IMU2RawData, imu2Data.rawData, sizeof(imu2Data.rawData));
         bleGamepad.setterCharacterData(bleGamepad.IMU1FuseDataCaliStatus, IMU1eurle.rawData, sizeof(IMU1eurle.rawData));
         bleGamepad.setterCharacterData(bleGamepad.IMU2FuseDataCaliStatus, IMU2eurle.rawData, sizeof(IMU2eurle.rawData));
-    }else {
+    }
+    else
+    {
         Serial.println("BLE Gamepad is not connected, cannot send data.");
     }
 }
@@ -479,9 +477,19 @@ void upBatteryBLE(BatteryData &batteryData, BleGamepad &bleGamepad)
     }
 }
 
-void bleCalibration(EEPROMDataCheckUnion &eepromData , ImuJoystickUnion &imuJoystickUnion, BleGamepad &bleGamepad)
+void bleCalibration(ImuJoystickUnion &imuJoystickUnion, IMUEulernUnion &imu1EulernUnion,
+                    IMUEulernUnion &imu2EulernUnion, BleGamepad &bleGamepad)
 {
-   if(bleGamepad.isOnWriteConfig && bleGamepad.isRightSize) {
-      bleGamepad.getcharacterData(bleGamepad.Config, imuJoystickUnion.rawData); 
-   }
-} 
+    if (bleGamepad.isOnWriteConfig && bleGamepad.isRightSize)
+    {
+        bleGamepad.getcharacterData(bleGamepad.Config, imuJoystickUnion.rawData);
+        if (imuJoystickUnion.configDataImuJOTISK.CMD == 2)
+        {
+
+        }
+        else if (imuJoystickUnion.configDataImuJOTISK.CMD == 3)
+        {
+
+        }
+    }
+}

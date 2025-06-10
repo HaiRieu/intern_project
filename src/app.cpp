@@ -19,7 +19,7 @@ static OverallStatusDataUnion overallStatusDataUnion;
 static IMUEulernUnion imuEulerCalibration1, imuEulerCalibration2;
 static FlexDataUnion flexSensorDataUnion;
 static ForceData forceSensorData;
-static IMUDataRawUnion imuDataRawUnion[NUM_IMUS];
+static IMUDataRawUnion imuDataRawUnion1 , imuDataRawUnion2;
 static ButtonDataUnion buttonDataUnion;
 static JoystickDataUnion joystickDataUnion;
 static BatteryData batteryData;
@@ -79,22 +79,23 @@ void appprocess()
 
     if (imuDataIMU1Ready || imuDataIMU2Ready)
     {
-      readDataIMU(lsm6ds1, lsm6ds2, lis3mdl1, lis3mdl2,
-                  calibrationImu1, calibrationImu2, fusion1, fusion2,
-                  imuDataRawUnion, imuEulerCalibration1, imuEulerCalibration2);
-
-      imuDataIMU1Ready = false;
-      imuDataIMU2Ready = false;
+       readDataIMU1(lsm6ds1, lis3mdl1, calibrationImu1, fusion1, imuDataRawUnion1, imuEulerCalibration1); 
+       readDataIMU2(lsm6ds2, lis3mdl2, calibrationImu2, fusion2, imuDataRawUnion2, imuEulerCalibration2); 
+       imuDataIMU1Ready = false;  
+       imuDataIMU2Ready = false;
     }
     else
     {
-      readDataIMU(lsm6ds1, lsm6ds2, lis3mdl1, lis3mdl2,
-                  calibrationImu1, calibrationImu2, fusion1, fusion2,
-                  imuDataRawUnion, imuEulerCalibration1, imuEulerCalibration2);
+  
     }
 
-    senDataBLE(bleGamepad, joystickDataUnion, imuDataRawUnion,
+    senDataBLE(bleGamepad, joystickDataUnion, imuDataRawUnion1,imuDataRawUnion2,
                imuEulerCalibration1, imuEulerCalibration2);
+
+   if(bleGamepad.isOnWriteConfig && bleGamepad.isRightSize) {
+         
+    }
+
   }
 
   if (millis() - lastFlexSensorReadTime >= readFlexSensorInterval)

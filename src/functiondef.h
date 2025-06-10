@@ -54,7 +54,8 @@ void setupBLEGamepad(BleGamepad &bleGamepad,
 
 void senDataBLE(BleGamepad &bleGamepad,
                 JoystickDataUnion &joystickDataUnion,
-                IMUDataRawUnion ImuArray[],
+                IMUDataRawUnion &imuData1,
+                IMUDataRawUnion &imuData2,
                 IMUEulernUnion &IMU1eurle,
                 IMUEulernUnion &IMU2eurle);
 
@@ -66,17 +67,19 @@ void processMotor();
 
 void updateOverallStatusData(OverallStatusDataUnion &overallStatusDatapPacked);
 
-void readDataIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
-                 Adafruit_LSM6DS3TRC &lsm6ds2,
+void readDataIMU2(Adafruit_LSM6DS3TRC &lsm6ds2,
+                  Adafruit_LIS3MDL &lis3mdl2,
+                  Adafruit_Sensor_Calibration_EEPROM &cal2,
+                  Adafruit_NXPSensorFusion &fusion2,
+                  IMUDataRawUnion &imuData,
+                  IMUEulernUnion &IMUeurle2);
+
+void readDataIMU1(Adafruit_LSM6DS3TRC &lsm6ds1,
                  Adafruit_LIS3MDL &lis3mdl1,
-                 Adafruit_LIS3MDL &lis3mdl2,
                  Adafruit_Sensor_Calibration_EEPROM &cal1,
-                 Adafruit_Sensor_Calibration_EEPROM &cal2,   
                  Adafruit_NXPSensorFusion &fusion1,
-                 Adafruit_NXPSensorFusion &fusion2,
-                 IMUDataRawUnion ImuArray[NUM_IMUS],
-                 IMUEulernUnion &IMUeurle1,
-                 IMUEulernUnion &IMUeurle2);
+                 IMUDataRawUnion &imuData,
+                 IMUEulernUnion &IMUeurle1);
 
 float mapFlexValue(int adcValue);
 

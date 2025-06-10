@@ -250,7 +250,6 @@ bool getImu2Status()
     return imu2Status;
 }
 
-
 /*
 @brief Reads data from the IMU sensors and updates the IMUDataRawUnion and IMUEulernUnion arrays.
 @param lsm6ds1 Reference to the first LSM6DS3TRC sensor
@@ -264,17 +263,12 @@ bool getImu2Status()
 @param IMUeurle Array of IMUEulernUnion structures to store Euler angles
 */
 
-void readDataIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
-                 Adafruit_LSM6DS3TRC &lsm6ds2,
+void readDataIMU1(Adafruit_LSM6DS3TRC &lsm6ds1,
                  Adafruit_LIS3MDL &lis3mdl1,
-                 Adafruit_LIS3MDL &lis3mdl2,
                  Adafruit_Sensor_Calibration_EEPROM &cal1,
-                 Adafruit_Sensor_Calibration_EEPROM &cal2,
                  Adafruit_NXPSensorFusion &fusion1,
-                 Adafruit_NXPSensorFusion &fusion2,
-                 IMUDataRawUnion ImuArray[NUM_IMUS],
-                 IMUEulernUnion &IMUeurle1,
-                 IMUEulernUnion &IMUeurle2)
+                 IMUDataRawUnion &imuData,
+                 IMUEulernUnion &IMUeurle1)
 {
     if (imu1Status)
     {
@@ -294,21 +288,21 @@ void readDataIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
             return;
         }
         timestamp = millis();
-        ImuArray[0].dataImu.accelXmg = accel1.acceleration.x;
-        ImuArray[0].dataImu.accelYmg = accel1.acceleration.y;
-        ImuArray[0].dataImu.accelZmg = accel1.acceleration.z;
+        imuData.dataImu.accelXmg = accel1.acceleration.x;
+        imuData.dataImu.accelYmg = accel1.acceleration.y;
+        imuData.dataImu.accelZmg = accel1.acceleration.z;
 
-        ImuArray[0].dataImu.GyroXrads = gyro1.gyro.x;
-        ImuArray[0].dataImu.GyroYrads = gyro1.gyro.y;
-        ImuArray[0].dataImu.GyroZrads = gyro1.gyro.z;
+        imuData.dataImu.GyroXrads = gyro1.gyro.x;
+        imuData.dataImu.GyroYrads = gyro1.gyro.y;
+        imuData.dataImu.GyroZrads = gyro1.gyro.z;
 
-        ImuArray[0].dataImu.MagXuT = mag1.magnetic.x;
-        ImuArray[0].dataImu.MagYuT = mag1.magnetic.y;
-        ImuArray[0].dataImu.MagZuT = mag1.magnetic.z;
+        imuData.dataImu.MagXuT = mag1.magnetic.x;
+        imuData.dataImu.MagYuT = mag1.magnetic.y;
+        imuData.dataImu.MagZuT = mag1.magnetic.z;
 
-        fusion1.update(ImuArray[0].dataImu.accelXmg, ImuArray[0].dataImu.accelYmg, ImuArray[0].dataImu.accelZmg,
-                       ImuArray[0].dataImu.GyroXrads, ImuArray[0].dataImu.GyroYrads, ImuArray[0].dataImu.GyroZrads,
-                       ImuArray[0].dataImu.MagXuT, ImuArray[0].dataImu.MagYuT, ImuArray[0].dataImu.MagZuT);
+        fusion1.update(imuData.dataImu.accelXmg, imuData.dataImu.accelYmg, imuData.dataImu.accelZmg,
+                       imuData.dataImu.GyroXrads, imuData.dataImu.GyroYrads, imuData.dataImu.GyroZrads,
+                       imuData.dataImu.MagXuT, imuData.dataImu.MagYuT, imuData.dataImu.MagZuT);
 
         IMUeurle1.eulerCalibStatus.EulerRolldeg = fusion1.getRoll();
         IMUeurle1.eulerCalibStatus.EulerPitchdeg = fusion1.getPitch();
@@ -318,10 +312,27 @@ void readDataIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
     {
         IMUeurle1.eulerCalibStatus.calibation = false;
     }
+}
+
+/*
+@brief Reads data from the second IMU sensors and updates the IMUDataRawUnion and IMUEulernUnion arrays.
+@param lsm6ds2 Reference to the second LSM6DS3TRC sensor
+@param lis3mdl2 Reference to the second LIS3MDL sensor
+@param cal2 Reference to the Adafruit_Sensor_Calibration_EEPROM object for calibration
+@param fusion2 Reference to the second Adafruit_NXPSensorFusion object for sensor fusion
+@param imuData Reference to the IMUDataRawUnion structure to store raw IMU data
+@param IMUeurle2 Reference to the IMUEulernUnion structure to store Euler angles
+*/
+void readDataIMU2(Adafruit_LSM6DS3TRC &lsm6ds2,
+                  Adafruit_LIS3MDL &lis3mdl2,
+                  Adafruit_Sensor_Calibration_EEPROM &cal2,
+                  Adafruit_NXPSensorFusion &fusion2,
+                  IMUDataRawUnion &imuData,
+                  IMUEulernUnion &IMUeurle2)
+{
 
     if (imu2Status)
     {
-
         sensors_event_t accel2, gyro2, mag2;
         lsm6ds2.getEvent(&accel2, &gyro2, NULL);
 
@@ -338,21 +349,21 @@ void readDataIMU(Adafruit_LSM6DS3TRC &lsm6ds1,
         }
         timestamp = millis();
 
-        ImuArray[1].dataImu.accelXmg = accel2.acceleration.x;
-        ImuArray[1].dataImu.accelYmg = accel2.acceleration.y;
-        ImuArray[1].dataImu.accelZmg = accel2.acceleration.z;
+        imuData.dataImu.accelXmg = accel2.acceleration.x;
+        imuData.dataImu.accelYmg = accel2.acceleration.y;
+        imuData.dataImu.accelZmg = accel2.acceleration.z;
 
-        ImuArray[1].dataImu.GyroXrads = gyro2.gyro.x;
-        ImuArray[1].dataImu.GyroYrads = gyro2.gyro.y;
-        ImuArray[1].dataImu.GyroZrads = gyro2.gyro.z;
+        imuData.dataImu.GyroXrads = gyro2.gyro.x;
+        imuData.dataImu.GyroYrads = gyro2.gyro.y;
+        imuData.dataImu.GyroZrads = gyro2.gyro.z;
 
-        ImuArray[1].dataImu.MagXuT = mag2.magnetic.x;
-        ImuArray[1].dataImu.MagYuT = mag2.magnetic.y;
-        ImuArray[1].dataImu.MagZuT = mag2.magnetic.z;
+        imuData.dataImu.MagXuT = mag2.magnetic.x;
+        imuData.dataImu.MagYuT = mag2.magnetic.y;
+        imuData.dataImu.MagZuT = mag2.magnetic.z;
 
-        fusion2.update(ImuArray[1].dataImu.accelXmg, ImuArray[1].dataImu.accelYmg, ImuArray[1].dataImu.accelZmg,
-                       ImuArray[1].dataImu.GyroXrads, ImuArray[1].dataImu.GyroYrads, ImuArray[1].dataImu.GyroZrads,
-                       ImuArray[1].dataImu.MagXuT, ImuArray[1].dataImu.MagYuT, ImuArray[1].dataImu.MagZuT);
+        fusion2.update(imuData.dataImu.accelXmg, imuData.dataImu.accelYmg, imuData.dataImu.accelZmg,
+                       imuData.dataImu.GyroXrads, imuData.dataImu.GyroYrads, imuData.dataImu.GyroZrads,
+                       imuData.dataImu.MagXuT, imuData.dataImu.MagYuT, imuData.dataImu.MagZuT);
 
         IMUeurle2.eulerCalibStatus.EulerRolldeg = fusion2.getRoll();
         IMUeurle2.eulerCalibStatus.EulerPitchdeg = fusion2.getPitch();
