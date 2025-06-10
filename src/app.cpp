@@ -20,13 +20,18 @@ static IMUEulernUnion imuEulerCalibration1, imuEulerCalibration2;
 static FlexDataUnion flexSensorDataUnion;
 static ForceData forceSensorData;
 static IMUDataRawUnion imuDataRawUnion[NUM_IMUS];
-static ButtonDataUnion buttonDataUnion; 
+static ButtonDataUnion buttonDataUnion;
+static JoystickDataUnion joystickDataUnion;
+static BatteryData batteryData;
 
 unsigned long lastFlexSensorReadTime = 0;
 unsigned long readFlexSensorInterval = 100;
 
-unsigned long lastJoystickReadTime = 0;
+unsigned long lastJoysticReadTime = 0;
 unsigned long JoystickReadInterval = 50;
+
+unsigned long lastBatteryCheckTime = 0;
+unsigned long batteryCheckInterval = 1000;
 
 void appsetup()
 {
@@ -68,25 +73,62 @@ void appsetup()
 
 void appprocess()
 {
-  if (imuDataIMU1Ready || imuDataIMU2Ready )
-  {
-    readDataIMU(lsm6ds1, lsm6ds2, lis3mdl1, lis3mdl2,
-                calibrationImu1, calibrationImu2, fusion1, fusion2,
-                imuDataRawUnion, imuEulerCalibration1, imuEulerCalibration2);
 
-    imuDataIMU1Ready = false;
+  if (getImu1Status() || getImu2Status())
+  {
+
+    if (imuDataIMU1Ready || imuDataIMU2Ready)
+    {
+      readDataIMU(lsm6ds1, lsm6ds2, lis3mdl1, lis3mdl2,
+                  calibrationImu1, calibrationImu2, fusion1, fusion2,
+                  imuDataRawUnion, imuEulerCalibration1, imuEulerCalibration2);
+
+      imuDataIMU1Ready = false;
+      imuDataIMU2Ready = false;
+    }
+    else
+    {
+      readDataIMU(lsm6ds1, lsm6ds2, lis3mdl1, lis3mdl2,
+                  calibrationImu1, calibrationImu2, fusion1, fusion2,
+                  imuDataRawUnion, imuEulerCalibration1, imuEulerCalibration2);
+    }
+
+    senDataBLE(bleGamepad, joystickDataUnion, imuDataRawUnion,
+               imuEulerCalibration1, imuEulerCalibration2);
   }
 
   if (millis() - lastFlexSensorReadTime >= readFlexSensorInterval)
   {
     readFlexSensor(flexSensorDataUnion);
     readForceSensor(forceSensorData);
-    checkbuttons(buttonDataUnion);
+    checkbuttons(buttonDataUnion, bleGamepad);
     lastFlexSensorReadTime = millis();
   }
 
+  if (millis() - lastJoysticReadTime >= JoystickReadInterval)
+  {
+    readJoystick(joystickDataUnion);
+    updateJoystickBle(bleGamepad, joystickDataUnion);
+    lastJoysticReadTime = millis();
+  }
 
+  if (millis() - lastBatteryCheckTime >= batteryCheckInterval)
+  {
+    readBatteryData(batteryData, fuelGauge);
+    upBatteryBLE(batteryData, bleGamepad);
+    lastBatteryCheckTime = millis();
+  }
+  if (bleGamepad.isOnWriteConfig && bleGamepad.isRightSize)
+  {
+    onwriteJoystic(configDataCheckUnion, bleGamepad);
+  }
 
+  if (bleGamepad.isOnWriteConfig && bleGamepad.isRightSize)
+  {
+    onWrieconfig(configDataCheckUnion, configData, bleGamepad);
+  }
+
+  processSwithChange();
 }
 /*
 @brief Calculate CRC16 checksum
@@ -271,7 +313,7 @@ void updateOverallStatusData(OverallStatusDataUnion &overallStatusData)
  * @param lis3mdl2 Reference to the second LIS3MDL sensor
 */
 void setupImuInterrupts(Adafruit_LSM6DS3TRC &lsm6ds1, Adafruit_LIS3MDL &lis3mdl1,
-                         Adafruit_LSM6DS3TRC &lsm6ds2, Adafruit_LIS3MDL &lis3mdl2)
+                        Adafruit_LSM6DS3TRC &lsm6ds2, Adafruit_LIS3MDL &lis3mdl2)
 {
 
   if (getImu1Status())

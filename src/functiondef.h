@@ -55,7 +55,8 @@ void setupBLEGamepad(BleGamepad &bleGamepad,
 void senDataBLE(BleGamepad &bleGamepad,
                 JoystickDataUnion &joystickDataUnion,
                 IMUDataRawUnion ImuArray[],
-                IMUEulernUnion IMUeurle[]);
+                IMUEulernUnion &IMU1eurle,
+                IMUEulernUnion &IMU2eurle);
 
 bool initFuelGauge(Adafruit_MAX17048 &fuelGauge, OverallStatusDataUnion &overallStatusDatapPacked);
 
@@ -85,8 +86,31 @@ void readFlexSensor(FlexDataUnion &flexSensorDataUnion);
 
 void readForceSensor(ForceData &forceSensorData);
 
-void checkbuttons(ButtonDataUnion &buttonDataUnion);
+void checkbuttons(ButtonDataUnion &buttonDataUnion , BleGamepad &bleGamepad);
 
 void readJoystick(JoystickDataUnion &joystickDataUnion);
+
+void updateJoystickBle(BleGamepad &bleGamepad, JoystickDataUnion &joystickDataUnion) ;
+
+void calibrateJoystick() ; 
+
+int16_t smoothJoystick(int16_t newValue, int16_t &preValue) ; 
+
+int16_t processJoystick(uint16_t adcValue, bool isXaxis) ; 
+
+void readBatteryData(BatteryData &batteryData, Adafruit_MAX17048 &maxlipo);
+
+void upBatteryBLE(BatteryData &batteryData, BleGamepad &bleGamepad); 
+
+void IRAM_ATTR switchChangeISR() ; 
+
+void setPowerDown() ;
+
+void processSwithChange();
+
+void onwriteJoystic(EEPROMDataCheckUnion &joystickDataUnion, BleGamepad &bleGamepad);
+
+void onWrieconfig(EEPROMDataCheckUnion &configData, ImuJoystickUnion &imuJoystickUnion, BleGamepad &bleGamepad);
+
 
 #endif

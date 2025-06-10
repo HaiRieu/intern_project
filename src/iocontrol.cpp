@@ -16,14 +16,21 @@ const FlexDataPoint FLEX_POINTS[] = {
 
 const int size = sizeof(FLEX_POINTS) / sizeof(FlexDataPoint);
 
+static joystickCali joyCali = {2048, 2048, 100, 4095, false};
+
+bool swithChange = false;
+bool swithChangePressed = false;
+unsigned long lastSwithChangeTime = 0;
+
 /*
 brief Initialize the system by setting up pin modes and initial states.
 */
 void systemInit()
 {
-
   pinMode(VSVY_EN_PIN, OUTPUT);
   digitalWrite(VSVY_EN_PIN, HIGH);
+  pinMode(SW_DE_PIN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(SW_DE_PIN), switchChangeISR, CHANGE);
   pinMode(LED_RED_PIN, OUTPUT);
   pinMode(LED_GREEN_PIN, OUTPUT);
   pinMode(LED_BLUE_PIN, OUTPUT);
@@ -77,7 +84,7 @@ float mapFlexValue(int adcValue)
 
 float mapForceValue(int adcValue)
 {
-  return (float)adcValue * 4096 / 3.3 ;
+  return (float)adcValue * 4096 / 3.3;
 }
 
 /*
@@ -104,7 +111,7 @@ void readForceSensor(ForceData &forceData)
 @Brief Reads the force sensor value and stores it in the provided union.
   * @param forceDataUnion Reference to the ForceDataUnion structure to store force sensor data
 */
-void checkbuttons(ButtonDataUnion &buttonDataUnion)
+void checkbuttons(ButtonDataUnion &buttonDataUnion, BleGamepad &bleGamepad)
 {
   for (int i = 0; i < NUM_BUTTONS; i++)
   {
@@ -117,6 +124,78 @@ void checkbuttons(ButtonDataUnion &buttonDataUnion)
       buttonDataUnion.buttonData.buttons[i] = 0;
     }
   }
+  if (bleGamepad.isConnected())
+  {
+    bleGamepad.setterCharacterData(bleGamepad.Buttons, buttonDataUnion.rawData, sizeof(buttonDataUnion.rawData));
+  }
+}
+
+/*
+@brief Processes the joystick ADC value and returns a scaled value based on calibration data.
+  * @param adcValue The ADC value read from the joystick
+  * @param isXaxis True if processing the X-axis, false for Y-axis
+  * @return Scaled joystick value in the range of -32768 to 32767
+  * This function applies dead zone and scaling based on the joystick calibration data.
+  * It calculates the distance from the center position and scales it to fit within the range of a signed 16-bit integer.
+  * If the distance is within the dead zone, it returns 0.
+*/
+int16_t processJoystick(uint16_t adcValue, bool isXaxis)
+{
+  uint16_t center = isXaxis ? joyCali.centerX : joyCali.xenterY;
+  int32_t distance = (int32_t)adcValue - (int32_t)center;
+
+  if (abs(distance) < joyCali.deadZone)
+  {
+    return 0;
+  }
+  int32_t maxDistance = joyCali.maxRange - joyCali.deadZone;
+
+  int32_t scaledValue;
+
+  if (distance > 0)
+  {
+    scaledValue = (distance - joyCali.deadZone) * 32767 / maxDistance;
+  }
+  else
+  {
+    scaledValue = (distance + joyCali.deadZone) * -32768 / maxDistance;
+  }
+
+  return (int16_t)constrain(scaledValue, -32768, 32767);
+}
+
+/*
+@brief Smooths the joystick value using a simple low-pass filter.
+  * @param newValue The new joystick value to be smoothed
+  * @param preValue Reference to the previous smoothed value
+  * @return The updated smoothed value
+  * This function applies a smoothing factor (alpha) to the new value and the previous value.
+  * It returns the new smoothed value, which is a weighted average of the new and previous values.
+*/
+int16_t smoothJoystick(int16_t newValue, int16_t &preValue)
+{
+  const float alpha = 0.3;
+  preValue = (int16_t)(alpha * newValue + (1 - alpha) * preValue);
+  return preValue;
+}
+
+/*
+@brief Calibrates the joystick by averaging multiple readings.
+  * This function reads the X and Y axis values from the joystick multiple times
+  * and calculates the average to determine the center position for calibration.
+  * The results are stored in the joyCali structure.
+*/
+void calibrateJoystick()
+{
+  uint32_t sumX = 0, sumY = 0;
+  for (int i = 0; i < 100; i++)
+  {
+    sumX += analogRead(XAXIS_PIN);
+    sumY += analogRead(YAXIS_PIN);
+    delay(10);
+  }
+  joyCali.centerX = sumX / 100;
+  joyCali.xenterY = sumY / 100;
 }
 
 /*
@@ -129,6 +208,40 @@ void readJoystick(JoystickDataUnion &joystickDataUnion)
   joystickDataUnion.joystickData.Xaxis = analogRead(XAXIS_PIN);
   joystickDataUnion.joystickData.Yaxis = analogRead(YAXIS_PIN);
   joystickDataUnion.joystickData.joystickButton = digitalRead(JOYSTICK_BUTTON_PIN) == HIGH ? 1 : 0;
+}
+
+void updateJoystickBle(BleGamepad &bleGamepad, JoystickDataUnion &joystickDataUnion)
+{
+
+  int16_t prevX = 0, prevY = 0;
+
+  int16_t x = processJoystick(joystickDataUnion.joystickData.Xaxis, true);
+  int16_t y = processJoystick(joystickDataUnion.joystickData.Yaxis, false);
+
+  x = smoothJoystick(x, prevX);
+  y = smoothJoystick(y, prevY);
+  
+  joystickDataUnion.joystickData.Xaxis = x;
+  joystickDataUnion.joystickData.Yaxis = y;
+
+  if (bleGamepad.isConnected())
+  {
+
+    bleGamepad.setterCharacterData(bleGamepad.Joystick, joystickDataUnion.rawData, sizeof(joystickDataUnion.rawData));
+
+    /*  bleGamepad.setAxes(x, y);
+
+      if (joystickDataUnion.joystickData.joystickButton)
+      {
+        bleGamepad.press(0x01);
+      }
+      else
+      {
+        bleGamepad.release(0x01);
+      }
+      bleGamepad.sendReport();
+    }*/
+  }
 }
 
 /*
@@ -172,6 +285,77 @@ void processMotor()
 
 void readBatteryData(BatteryData &batteryData, Adafruit_MAX17048 &maxlipo)
 {
+  float voltage = maxlipo.cellVoltage();
+  if (isnan(voltage))
+  {
+    Serial.println("Failed to read battery voltage, check battery is connected!");
+    return;
+  }
+  float percent = maxlipo.cellPercent();
+  batteryData.batteryLevel = (uint8_t)percent;
+  if (percent >= 100)
+  {
+    batteryData.batteryChargeStatus = BatteryChargeStatus::BATTERY_CHARGE_STATUS_FULLY_CHARGED;
+  }
+  else if (percent > 0 && percent < 100)
+  {
+    batteryData.batteryChargeStatus = BatteryChargeStatus::BATTERY_CHARGE_STATUS_CHARGING;
+  }
+  else if (percent == 0)
+  {
+    batteryData.batteryChargeStatus = BatteryChargeStatus::BATTERY_CHARGE_STATUS_NOT_CHARGING;
+  }
+}
 
-  batteryData.batteryLevel = maxlipo.cellPercent();
+/*
+@brief Interrupt Service Routine (ISR) for switch change detection.
+  * This function is triggered on a change in the state of the switch connected to SW_DE_PIN.
+  * It detects long presses and sets a flag for further processing.
+*/
+void IRAM_ATTR switchChangeISR()
+{
+  bool currentState = digitalRead(SW_DE_PIN) == LOW;
+  if (currentState && !swithChangePressed)
+  {
+    lastSwithChangeTime = millis();
+    swithChangePressed = true;
+  }
+  else if (!currentState && swithChangePressed)
+  {
+    swithChangePressed = false;
+    swithChange = true;
+  }
+}
+
+/*
+@brief Powers down the system by disabling the VSVY_EN pin and entering an infinite loop.
+  * This function is called when a long press on the switch is detected.
+*/
+void setPowerDown()
+{
+  digitalWrite(VSVY_EN_PIN, LOW);
+  delay(100);
+  while (true);
+}
+
+/*
+@brief Processes the switch change event.
+  * This function checks if a switch change has occurred and if it has been long enough to trigger a power down.
+  * If a long press is detected, it calls the setPowerDown function to power down the system.
+*/
+void processSwithChange()
+{
+  if (swithChange)
+  {
+    swithChange = false;
+    if (millis() - lastSwithChangeTime > LONG_PRESS_TIME)
+    {
+      Serial.println("Long press detected, powering down...");
+      setPowerDown();
+    }
+    else
+    {
+      Serial.println("Short press detected, toggling switch state...");
+    }
+  }
 }

@@ -304,5 +304,6 @@
   "files.associations": {
     "new": "cpp",
     "random": "cpp"
-  }
+  },
+  "cmake.sourceDirectory": "D:/FreeROTS/Object/lib/Adafruit_BusIO"
 }
