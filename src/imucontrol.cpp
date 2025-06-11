@@ -264,11 +264,11 @@ bool getImu2Status()
 */
 
 void readDataIMU1(Adafruit_LSM6DS3TRC &lsm6ds1,
-                 Adafruit_LIS3MDL &lis3mdl1,
-                 Adafruit_Sensor_Calibration_EEPROM &cal1,
-                 Adafruit_NXPSensorFusion &fusion1,
-                 IMUDataRawUnion &imuData,
-                 IMUEulernUnion &IMUeurle1)
+                  Adafruit_LIS3MDL &lis3mdl1,
+                  Adafruit_Sensor_Calibration_EEPROM &cal1,
+                  Adafruit_NXPSensorFusion &fusion1,
+                  IMUDataRawUnion &imuData,
+                  IMUEulernUnion &IMUeurle1)
 {
     if (imu1Status)
     {
@@ -372,5 +372,206 @@ void readDataIMU2(Adafruit_LSM6DS3TRC &lsm6ds2,
     else
     {
         IMUeurle2.eulerCalibStatus.calibation = false;
+    }
+}
+
+/*
+@brief Updates the battery level and charge status in the BLE Gamepad.
+@param batteryData Reference to the BatteryData structure containing battery information
+@param bleGamepad Reference to the BleGamepad object
+This function checks if the BLE Gamepad is connected and updates the battery level and charge status accordingly.
+*/
+void upBatteryBLE(BatteryData &batteryData, BleGamepad &bleGamepad)
+{
+    if (bleGamepad.isConnected())
+    {
+        bleGamepad.setBatteryLevel(batteryData.batteryLevel);
+        bleGamepad.setBatteryChargeStatus(batteryData.batteryChargeStatus);
+    }
+}
+/*
+@brief Parses motion calibration data from a string and stores it in an array of offsets.
+@param data The string containing the calibration data in the format "CalibrationData <offset1> <offset2> ... <offset12>"
+@param offsets Pointer to an array of floats where the parsed calibration data will be stored
+@return True if the parsing was successful, false otherwise
+This function checks if the input string starts with "CalibrationData", extracts the calibration values, and stores them in the provided offsets array. It returns true if successful, or false if the format is invalid or no values are found.
+*/
+
+bool parseMotionCalData(const String &data, float *offsets)
+{
+    if (!data.startsWith("CalibrationData"))
+    {
+        Serial.println("Error: Invalid calibration data format");
+        return false;
+    }
+
+    int startIdx = data.indexOf(' ') + 1;
+    if (startIdx == 0)
+    {
+        Serial.println("Error: No calibration values found");
+        return false;
+    }
+    int tokenCount = 0;
+    String remainingData = data.substring(startIdx);
+    for (int i = 0; i < 12; i++)
+    {
+        int spaceIdx = remainingData.indexOf(' ');
+        String token;
+
+        if (spaceIdx == -1)
+        {
+            token = remainingData;
+            remainingData = "";
+        }
+        else
+        {
+            token = remainingData.substring(0, spaceIdx);
+            remainingData = remainingData.substring(spaceIdx + 1);
+        }
+
+        token.trim();
+        if (token.length() == 0)
+        {
+            Serial.println("Error: Empty token found");
+            return false;
+        }
+
+        offsets[i] = token.toFloat();
+        tokenCount++;
+
+        if (remainingData.length() == 0 && i < 11)
+        {
+            Serial.println("Error: Not enough calibration values");
+            return false;
+        }
+    }
+    return true;
+}
+
+void saveMotionCal(Adafruit_Sensor_Calibration_EEPROM &cal, float *offsets)
+{
+    cal.mag_hardiron[0] = offsets[0];
+    cal.mag_hardiron[1] = offsets[1];
+    cal.mag_hardiron[2] = offsets[2];
+
+    cal.mag_softiron[0] = offsets[3];
+    cal.mag_softiron[1] = offsets[4];
+    cal.mag_softiron[2] = offsets[5];
+    cal.mag_softiron[3] = offsets[6];
+    cal.mag_softiron[4] = offsets[7];
+    cal.mag_softiron[5] = offsets[8];
+    cal.mag_softiron[6] = offsets[9];
+    cal.mag_softiron[7] = offsets[10];
+    cal.mag_softiron[8] = offsets[11];
+    cal.saveCalibration();
+}
+
+void handleSerial(Adafruit_Sensor_Calibration_EEPROM &cal)
+{
+    if (Serial.available())
+    {
+        String value = Serial.readStringUntil('\n').c_str();
+        if (value == "CalibrationData")
+        {
+            float offser[12];
+            parseMotionCalData(value, offser);
+            saveMotionCal(cal, offser);
+        }
+    }
+}
+
+/*
+@brief Sets the IMU calibration for the specified IMU union and BLE Gamepad.
+@param ImuEulernUnion Reference to the IMUEulernUnion containing IMU calibration data
+@param bleGamepad Reference to the BleGamepad object
+@param cal Reference to the Adafruit_Sensor_Calibration_EEPROM object for calibration
+@return True if calibration was successfully loaded, false otherwise
+
+*/
+bool setImuCalibration(IMUEulernUnion &ImuEulernUnion,
+                       BleGamepad &bleGamepad,
+                       Adafruit_Sensor_Calibration_EEPROM &cal)
+
+{
+    unsigned long startTime = millis();
+    bool isCalibrated = false;
+    if (cal.loadCalibration())
+    {
+        isCalibrated = true;
+    }
+    else
+    {
+        handleSerial(cal);
+        isCalibrated = true;
+        Serial.println("Failed to load calibration data for IMU1.");
+    }
+    unsigned long loadTime = millis() - startTime;
+    return isCalibrated;
+}
+
+/*
+@brief Updates the calibration status of the specified IMU in the BLE Gamepad.
+@param ImuEulernUnion Reference to the IMUEulernUnion containing IMU calibration data
+@param bleGamepad Reference to the BleGamepad object
+@param imuNumber The IMU number (1 or 2) to update the calibration status for
+@param isCalibrated Boolean indicating whether the IMU is calibrated or not
+This function checks if the BLE Gamepad is connected and updates the calibration status of the specified IMU. It sends the updated calibration data to the appropriate characteristic based on the IMU number.
+*/
+
+void updateCalibrationIMU(IMUEulernUnion &ImuEulernUnion,
+                          BleGamepad &bleGamepad,
+                          uint8_t imuNumber,
+                          bool isCalibrated)
+{
+    if (bleGamepad.isConnected())
+    {
+        ImuEulernUnion.eulerCalibStatus.calibation = isCalibrated ? 1 : 0;
+
+        if (imuNumber == 1)
+        {
+            bleGamepad.setterCharacterData(bleGamepad.IMU1FuseDataCaliStatus, ImuEulernUnion.rawData, sizeof(ImuEulernUnion.rawData));
+        }
+        else if (imuNumber == 2)
+        {
+            bleGamepad.setterCharacterData(bleGamepad.IMU2FuseDataCaliStatus, ImuEulernUnion.rawData, sizeof(ImuEulernUnion.rawData));
+        }
+        else
+        {
+            Serial.println("Invalid IMU number for calibration update.");
+        }
+    }
+}
+
+/*
+@brief Handles BLE calibration for IMU and joystick settings.
+@param imuJoystickUnion Reference to the ImuJoystickUnion containing IMU and joystick configuration data
+@param imu1EulernUnion Reference to the IMUEulernUnion for IMU 1 calibration data
+@param imu2EulernUnion Reference to the IMUEulernUnion for IMU 2 calibration data
+@param bleGamepad Reference to the BleGamepad object
+@param cal1 Reference to the Adafruit_Sensor_Calibration_EEPROM object for IMU 1 calibration
+@param cal2 Reference to the Adafruit_Sensor_Calibration_EEPROM object for IMU 2 calibration
+This function checks if the BLE Gamepad is in write configuration mode and processes calibration commands for IMU 1 and IMU 2. It updates the calibration status and sends the updated data to the BLE Gamepad.
+*/
+
+void bleCalibration(ImuJoystickUnion &imuJoystickUnion, IMUEulernUnion &imu1EulernUnion,
+                    IMUEulernUnion &imu2EulernUnion, BleGamepad &bleGamepad, 
+                    Adafruit_Sensor_Calibration_EEPROM &cal1, Adafruit_Sensor_Calibration_EEPROM &cal2)
+{
+    if (bleGamepad.isOnWriteConfig && bleGamepad.isRightSize)
+    {
+        bleGamepad.getcharacterData(bleGamepad.Config, imuJoystickUnion.rawData);
+        if (imuJoystickUnion.configDataImuJOTISK.CMD == 2)
+        {
+            bool isCalibrated = setImuCalibration(imu1EulernUnion, bleGamepad, cal1);
+            updateCalibrationIMU(imu1EulernUnion, bleGamepad, 1, isCalibrated);
+        }
+        else if (imuJoystickUnion.configDataImuJOTISK.CMD == 3)
+        {
+            bool isCalibrated = setImuCalibration(imu2EulernUnion, bleGamepad, cal2);
+            updateCalibrationIMU(imu2EulernUnion, bleGamepad, 2, isCalibrated);
+        }
+
+        bleGamepad.isOnWriteConfig = 0;
+        bleGamepad.isRightSize = 0;
     }
 }

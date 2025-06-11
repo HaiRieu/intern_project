@@ -115,5 +115,11 @@ void onwriteJoystic(EEPROMDataCheckUnion &joystickDataUnion, BleGamepad &bleGame
 
 void onWrieconfig(EEPROMDataCheckUnion &configData, ImuJoystickUnion &imuJoystickUnion, BleGamepad &bleGamepad);
 
+void bleCalibration(ImuJoystickUnion &imuJoystickUnion, 
+                    IMUEulernUnion &imu1EulernUnion,
+                    IMUEulernUnion &imu2EulernUnion, 
+                    BleGamepad &bleGamepad,
+                    Adafruit_Sensor_Calibration_EEPROM &cal1, 
+                    Adafruit_Sensor_Calibration_EEPROM &cal2);
 
 #endif

@@ -467,29 +467,3 @@ void senDataBLE(BleGamepad &bleGamepad,
         Serial.println("BLE Gamepad is not connected, cannot send data.");
     }
 }
-
-void upBatteryBLE(BatteryData &batteryData, BleGamepad &bleGamepad)
-{
-    if (bleGamepad.isConnected())
-    {
-        bleGamepad.setBatteryLevel(batteryData.batteryLevel);
-        bleGamepad.setBatteryChargeStatus(batteryData.batteryChargeStatus);
-    }
-}
-
-void bleCalibration(ImuJoystickUnion &imuJoystickUnion, IMUEulernUnion &imu1EulernUnion,
-                    IMUEulernUnion &imu2EulernUnion, BleGamepad &bleGamepad)
-{
-    if (bleGamepad.isOnWriteConfig && bleGamepad.isRightSize)
-    {
-        bleGamepad.getcharacterData(bleGamepad.Config, imuJoystickUnion.rawData);
-        if (imuJoystickUnion.configDataImuJOTISK.CMD == 2)
-        {
-
-        }
-        else if (imuJoystickUnion.configDataImuJOTISK.CMD == 3)
-        {
-
-        }
-    }
-}

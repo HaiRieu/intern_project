@@ -77,26 +77,32 @@ void appprocess()
   if (getImu1Status() || getImu2Status())
   {
 
-    if (imuDataIMU1Ready || imuDataIMU2Ready)
+    if (imuDataIMU1Ready )
     {
       readDataIMU1(lsm6ds1, lis3mdl1, calibrationImu1, fusion1, imuDataRawUnion1, imuEulerCalibration1);
-      readDataIMU2(lsm6ds2, lis3mdl2, calibrationImu2, fusion2, imuDataRawUnion2, imuEulerCalibration2);
       imuDataIMU1Ready = false;
+    
+    }
+
+    if (imuDataIMU2Ready)
+    {
+
+      readDataIMU2(lsm6ds2, lis3mdl2, calibrationImu2, fusion2, imuDataRawUnion2, imuEulerCalibration2);
       imuDataIMU2Ready = false;
+   
     }
     else
     {
+
       readDataIMU1(lsm6ds1, lis3mdl1, calibrationImu1, fusion1, imuDataRawUnion1, imuEulerCalibration1);
       readDataIMU2(lsm6ds2, lis3mdl2, calibrationImu2, fusion2, imuDataRawUnion2, imuEulerCalibration2);
     }
-
     senDataBLE(bleGamepad, joystickDataUnion, imuDataRawUnion1, imuDataRawUnion2,
                imuEulerCalibration1, imuEulerCalibration2);
-
-    if (bleGamepad.isOnWriteConfig && bleGamepad.isRightSize)
+    if (bleGamepad.isConnected())
     {
-
-
+      bleCalibration(configData, imuEulerCalibration1,
+                     imuEulerCalibration2, bleGamepad, calibrationImu1, calibrationImu2);
     }
   }
 
