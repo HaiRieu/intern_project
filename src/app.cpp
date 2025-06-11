@@ -49,11 +49,8 @@ void appsetup()
     Serial.println("to restore settings from EEPROM");
   }
 
-  if (!initFuelGauge(fuelGauge, overallStatusDataUnion))
-  {
-    Serial.println("Fuel gauge initialization failed");
-  }
-
+  initFuelGauge(fuelGauge, overallStatusDataUnion);
+  
   if (imuStart(lsm6ds1, lis3mdl1, lsm6ds2, lis3mdl2,
                ADDRESS_LSM6DS1, ADDRESS_LIS3MDL1, ADDRESS_LSM6DS2, ADDRESS_LIS3MDL2,
                overallStatusDataUnion, fusion1, fusion2))
@@ -77,28 +74,26 @@ void appprocess()
   if (getImu1Status() || getImu2Status())
   {
 
-    if (imuDataIMU1Ready )
+    if (imuDataIMU1Ready)
     {
-      readDataIMU1(lsm6ds1, lis3mdl1, calibrationImu1, fusion1, imuDataRawUnion1, imuEulerCalibration1);
+      readDataIMU1(lsm6ds1, lis3mdl1, calibrationImu1, fusion1, imuDataRawUnion1, imuEulerCalibration1, bleGamepad);
       imuDataIMU1Ready = false;
-    
+    }else {
+      readDataIMU1(lsm6ds1, lis3mdl1, calibrationImu1, fusion1, imuDataRawUnion1, imuEulerCalibration1, bleGamepad);
     }
 
     if (imuDataIMU2Ready)
     {
 
-      readDataIMU2(lsm6ds2, lis3mdl2, calibrationImu2, fusion2, imuDataRawUnion2, imuEulerCalibration2);
+      readDataIMU2(lsm6ds2, lis3mdl2, calibrationImu2, fusion2, imuDataRawUnion2, imuEulerCalibration2,bleGamepad);
       imuDataIMU2Ready = false;
-   
     }
     else
     {
-
-      readDataIMU1(lsm6ds1, lis3mdl1, calibrationImu1, fusion1, imuDataRawUnion1, imuEulerCalibration1);
-      readDataIMU2(lsm6ds2, lis3mdl2, calibrationImu2, fusion2, imuDataRawUnion2, imuEulerCalibration2);
+      readDataIMU2(lsm6ds2, lis3mdl2, calibrationImu2, fusion2, imuDataRawUnion2, imuEulerCalibration2,bleGamepad);
     }
-    senDataBLE(bleGamepad, joystickDataUnion, imuDataRawUnion1, imuDataRawUnion2,
-               imuEulerCalibration1, imuEulerCalibration2);
+    /* senDataBLE(bleGamepad, joystickDataUnion, imuDataRawUnion1, imuDataRawUnion2,
+                imuEulerCalibration1, imuEulerCalibration2);*/
     if (bleGamepad.isConnected())
     {
       bleCalibration(configData, imuEulerCalibration1,
@@ -108,8 +103,8 @@ void appprocess()
 
   if (millis() - lastFlexSensorReadTime >= readFlexSensorInterval)
   {
-    readFlexSensor(flexSensorDataUnion);
-    readForceSensor(forceSensorData);
+    readFlexSensor(flexSensorDataUnion, bleGamepad);
+    readForceSensor(forceSensorData, bleGamepad);
     checkbuttons(buttonDataUnion, bleGamepad);
     lastFlexSensorReadTime = millis();
   }
@@ -137,7 +132,7 @@ void appprocess()
     onWrieconfig(configDataCheckUnion, configData, bleGamepad);
   }
 
-  processSwithChange();
+  // processSwithChange();
 }
 /*
 @brief Calculate CRC16 checksum
@@ -297,14 +292,22 @@ void updateOverallStatusData(OverallStatusDataUnion &overallStatusData)
   overallStatusData.overallStatusData.statusode = statusCode::NO_ERROR;
   overallStatusData.overallStatusData.FuelgauseStatus = fuelGauge.isDeviceReady() ? statusCodeSensor::RUNNING : statusCodeSensor::FAILED;
 
-  if (imuDataIMU1Ready && imuDataIMU2Ready)
+  if (getImu1Status())
   {
     overallStatusData.overallStatusData.Imu1Status = statusCodeSensor::RUNNING;
-    overallStatusData.overallStatusData.Imu2Status = statusCodeSensor::RUNNING;
   }
   else
   {
     overallStatusData.overallStatusData.Imu1Status = statusCodeSensor::FAILED;
+  }
+
+  if (getImu2Status())
+  {
+    overallStatusData.overallStatusData.Imu2Status = statusCodeSensor::RUNNING;
+  }
+  else
+  {
+
     overallStatusData.overallStatusData.Imu2Status = statusCodeSensor::FAILED;
   }
 }

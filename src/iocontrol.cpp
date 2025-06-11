@@ -92,19 +92,28 @@ brief Read analog values from flex sensors and store them in the provided union.
   * @param flexSensorDataUnion Reference to the Flex_sensor_data_Union structure to store sensor data
 
 */
-void readFlexSensor(FlexDataUnion &flexSensorDataUnion)
+void readFlexSensor(FlexDataUnion &flexSensorDataUnion, BleGamepad &bleGamepad)
 {
   for (int i = 0; i < NUM_FLEX; i++)
   {
     int adcValue = analogRead(FLEX_SENSOR_PINS[i]);
     flexSensorDataUnion.flexSensorData.FlexSensorData[i] = mapFlexValue(adcValue);
+  
+
   }
+
+    if(bleGamepad.isConnected()) {
+      bleGamepad.setterCharacterData(bleGamepad.FlexSensorData, flexSensorDataUnion.rawData , sizeof(flexSensorDataUnion));
+    }
 }
 
-void readForceSensor(ForceData &forceData)
+void readForceSensor(ForceData &forceData,BleGamepad &bleGamepad)
 {
   int adcValue = analogRead(FORECE_SENSOR_PIN);
   forceData.ForceDataKOhm = mapForceValue(adcValue);
+  if(bleGamepad.isConnected()) {
+    bleGamepad.setterCharacterData(bleGamepad.ForceSensorData, (uint8_t*)&forceData, sizeof(forceData));
+  }
 }
 
 /*
@@ -228,19 +237,6 @@ void updateJoystickBle(BleGamepad &bleGamepad, JoystickDataUnion &joystickDataUn
   {
 
     bleGamepad.setterCharacterData(bleGamepad.Joystick, joystickDataUnion.rawData, sizeof(joystickDataUnion.rawData));
-
-    /*  bleGamepad.setAxes(x, y);
-
-      if (joystickDataUnion.joystickData.joystickButton)
-      {
-        bleGamepad.press(0x01);
-      }
-      else
-      {
-        bleGamepad.release(0x01);
-      }
-      bleGamepad.sendReport();
-    }*/
   }
 }
 
@@ -288,7 +284,7 @@ void readBatteryData(BatteryData &batteryData, Adafruit_MAX17048 &maxlipo)
   float voltage = maxlipo.cellVoltage();
   if (isnan(voltage))
   {
-    Serial.println("Failed to read battery voltage, check battery is connected!");
+    Serial.println(" to read battery voltage, check battery is connected!");
     return;
   }
   float percent = maxlipo.cellPercent();

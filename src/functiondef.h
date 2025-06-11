@@ -72,22 +72,22 @@ void readDataIMU2(Adafruit_LSM6DS3TRC &lsm6ds2,
                   Adafruit_Sensor_Calibration_EEPROM &cal2,
                   Adafruit_NXPSensorFusion &fusion2,
                   IMUDataRawUnion &imuData,
-                  IMUEulernUnion &IMUeurle2);
+                  IMUEulernUnion &IMUeurle2, BleGamepad &bleGamepad);
 
 void readDataIMU1(Adafruit_LSM6DS3TRC &lsm6ds1,
                  Adafruit_LIS3MDL &lis3mdl1,
                  Adafruit_Sensor_Calibration_EEPROM &cal1,
                  Adafruit_NXPSensorFusion &fusion1,
                  IMUDataRawUnion &imuData,
-                 IMUEulernUnion &IMUeurle1);
+                 IMUEulernUnion &IMUeurle1, BleGamepad &bleGamepad);
 
 float mapFlexValue(int adcValue);
 
 float mapForceValue(int adcValue);
 
-void readFlexSensor(FlexDataUnion &flexSensorDataUnion);
+void readFlexSensor(FlexDataUnion &flexSensorDataUnion, BleGamepad &bleGamepad);
 
-void readForceSensor(ForceData &forceSensorData);
+void readForceSensor(ForceData &forceSensorData, BleGamepad &bleGamepad);
 
 void checkbuttons(ButtonDataUnion &buttonDataUnion , BleGamepad &bleGamepad);
 

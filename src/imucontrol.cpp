@@ -268,7 +268,8 @@ void readDataIMU1(Adafruit_LSM6DS3TRC &lsm6ds1,
                   Adafruit_Sensor_Calibration_EEPROM &cal1,
                   Adafruit_NXPSensorFusion &fusion1,
                   IMUDataRawUnion &imuData,
-                  IMUEulernUnion &IMUeurle1)
+                  IMUEulernUnion &IMUeurle1, 
+                  BleGamepad &bleGamepad)
 {
     if (imu1Status)
     {
@@ -310,7 +311,12 @@ void readDataIMU1(Adafruit_LSM6DS3TRC &lsm6ds1,
     }
     else
     {
+        Serial.println("IMU1 not ready");
         IMUeurle1.eulerCalibStatus.calibation = false;
+    }
+
+    if(bleGamepad.isConnected()){
+       bleGamepad.setterCharacterData(bleGamepad.IMU1RawData, imuData.rawData , sizeof(imuData.rawData));
     }
 }
 
@@ -328,7 +334,8 @@ void readDataIMU2(Adafruit_LSM6DS3TRC &lsm6ds2,
                   Adafruit_Sensor_Calibration_EEPROM &cal2,
                   Adafruit_NXPSensorFusion &fusion2,
                   IMUDataRawUnion &imuData,
-                  IMUEulernUnion &IMUeurle2)
+                  IMUEulernUnion &IMUeurle2,
+                  BleGamepad &bleGamepad)
 {
 
     if (imu2Status)
@@ -370,9 +377,15 @@ void readDataIMU2(Adafruit_LSM6DS3TRC &lsm6ds2,
         IMUeurle2.eulerCalibStatus.EulerYawdeg = fusion2.getYaw();
     }
     else
-    {
+    { 
+        Serial.println("IMU2 not ready");
         IMUeurle2.eulerCalibStatus.calibation = false;
     }
+
+   if(bleGamepad.isConnected()) {
+     bleGamepad.setterCharacterData(bleGamepad.IMU1RawData, imuData.rawData , sizeof(imuData.rawData));  
+   }
+
 }
 
 /*
