@@ -98,21 +98,21 @@ void readFlexSensor(FlexDataUnion &flexSensorDataUnion, BleGamepad &bleGamepad)
   {
     int adcValue = analogRead(FLEX_SENSOR_PINS[i]);
     flexSensorDataUnion.flexSensorData.FlexSensorData[i] = mapFlexValue(adcValue);
-  
-
   }
 
-    if(bleGamepad.isConnected()) {
-      bleGamepad.setterCharacterData(bleGamepad.FlexSensorData, flexSensorDataUnion.rawData , sizeof(flexSensorDataUnion));
-    }
+  if (bleGamepad.isConnected())
+  {
+    bleGamepad.setterCharacterData(bleGamepad.FlexSensorData, flexSensorDataUnion.rawData, sizeof(flexSensorDataUnion));
+  }
 }
 
-void readForceSensor(ForceData &forceData,BleGamepad &bleGamepad)
+void readForceSensor(ForceData &forceData, BleGamepad &bleGamepad)
 {
   int adcValue = analogRead(FORECE_SENSOR_PIN);
   forceData.ForceDataKOhm = mapForceValue(adcValue);
-  if(bleGamepad.isConnected()) {
-    bleGamepad.setterCharacterData(bleGamepad.ForceSensorData, (uint8_t*)&forceData, sizeof(forceData));
+  if (bleGamepad.isConnected())
+  {
+    bleGamepad.setterCharacterData(bleGamepad.ForceSensorData, (uint8_t *)&forceData, sizeof(forceData));
   }
 }
 
@@ -229,7 +229,7 @@ void updateJoystickBle(BleGamepad &bleGamepad, JoystickDataUnion &joystickDataUn
 
   x = smoothJoystick(x, prevX);
   y = smoothJoystick(y, prevY);
-  
+
   joystickDataUnion.joystickData.Xaxis = x;
   joystickDataUnion.joystickData.Yaxis = y;
 
@@ -251,6 +251,7 @@ void cycleRGBOnce()
     analogWrite(LED_RED_PIN, 255 - i);
     analogWrite(LED_GREEN_PIN, i);
     analogWrite(LED_BLUE_PIN, 0);
+    delay(10);
   }
 
   for (int i = 0; i <= 255; i += 5)
@@ -258,6 +259,7 @@ void cycleRGBOnce()
     analogWrite(LED_RED_PIN, 0);
     analogWrite(LED_GREEN_PIN, 255 - i);
     analogWrite(LED_BLUE_PIN, i);
+    delay(10);
   }
 
   for (int i = 0; i <= 255; i += 5)
@@ -265,6 +267,7 @@ void cycleRGBOnce()
     analogWrite(LED_RED_PIN, i);
     analogWrite(LED_GREEN_PIN, 0);
     analogWrite(LED_BLUE_PIN, 255 - i);
+    delay(10);
   }
 
   analogWrite(LED_RED_PIN, 0);
@@ -288,16 +291,23 @@ void readBatteryData(BatteryData &batteryData, Adafruit_MAX17048 &maxlipo)
     return;
   }
   float percent = maxlipo.cellPercent();
+  percent = constrain(percent, 0, 100);
   batteryData.batteryLevel = (uint8_t)percent;
-  if (percent >= 100)
+ 
+  float chargeRate = maxlipo.chargeRate();
+   
+
+  bool isCharging = (voltage > 4.0); 
+  
+  if (percent >= 100 && !isCharging)
   {
     batteryData.batteryChargeStatus = BatteryChargeStatus::BATTERY_CHARGE_STATUS_FULLY_CHARGED;
   }
-  else if (percent > 0 && percent < 100)
+  else if (isCharging)
   {
     batteryData.batteryChargeStatus = BatteryChargeStatus::BATTERY_CHARGE_STATUS_CHARGING;
   }
-  else if (percent == 0)
+  else
   {
     batteryData.batteryChargeStatus = BatteryChargeStatus::BATTERY_CHARGE_STATUS_NOT_CHARGING;
   }
@@ -331,7 +341,8 @@ void setPowerDown()
 {
   digitalWrite(VSVY_EN_PIN, LOW);
   delay(100);
-  while (true);
+  while (true)
+    ;
 }
 
 /*
@@ -353,5 +364,21 @@ void processSwithChange()
     {
       Serial.println("Short press detected, toggling switch state...");
     }
+  }
+}
+
+void updateLed(int r, int g, int b, int times, int delayTime)
+{
+  for (int i = 0; i < times; i++)
+  {
+    analogWrite(LED_RED_PIN, r);
+    analogWrite(LED_GREEN_PIN, g);
+    analogWrite(LED_BLUE_PIN, b);
+    delay(delayTime);
+
+    analogWrite(LED_RED_PIN, 0);
+    analogWrite(LED_GREEN_PIN, 0);
+    analogWrite(LED_BLUE_PIN, 0);
+    delay(delayTime);
   }
 }

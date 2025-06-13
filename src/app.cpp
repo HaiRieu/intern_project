@@ -10,8 +10,13 @@ Adafruit_Sensor_Calibration_EEPROM calibrationImu1, calibrationImu2;
 Adafruit_NXPSensorFusion fusion1, fusion2;
 Adafruit_MAX17048 fuelGauge;
 
-bool imuDataIMU1Ready = false;
-bool imuDataIMU2Ready = false;
+volatile bool imuDataIMUReady1 = false;
+volatile bool imuDataIMUReady2 = false;
+bool imu1Status = false;
+bool imu2Status = false;
+
+uint32_t timestamp1 = 0;
+uint32_t timestamp2 = 0;
 
 static ImuJoystickUnion configData;
 static EEPROMDataCheckUnion configDataCheckUnion;
@@ -24,22 +29,24 @@ static ButtonDataUnion buttonDataUnion;
 static JoystickDataUnion joystickDataUnion;
 static BatteryData batteryData;
 
+unsigned long lastIMUReadTime = 0;
+unsigned long imuReadInterval = 100;
+
 unsigned long lastFlexSensorReadTime = 0;
 unsigned long readFlexSensorInterval = 100;
 
 unsigned long lastJoysticReadTime = 0;
-unsigned long JoystickReadInterval = 50;
+unsigned long JoystickReadInterval = 200;
 
 unsigned long lastBatteryCheckTime = 0;
-unsigned long batteryCheckInterval = 1000;
+unsigned long batteryCheckInterval = 2000;
 
 void appsetup()
 {
 
   Serial.begin(115200);
-  Wire.begin(I2C_SCL_PIN, I2C_SDA_PIN);
+  Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
   systemInit();
-
   if (!restoreSettings(configDataCheckUnion))
   {
     resetEEPROMDefaul(configDataCheckUnion);
@@ -50,87 +57,91 @@ void appsetup()
   }
 
   initFuelGauge(fuelGauge, overallStatusDataUnion);
-  
-  if (imuStart(lsm6ds1, lis3mdl1, lsm6ds2, lis3mdl2,
-               ADDRESS_LSM6DS1, ADDRESS_LIS3MDL1, ADDRESS_LSM6DS2, ADDRESS_LIS3MDL2,
-               overallStatusDataUnion, fusion1, fusion2))
-  {
-    Serial.println("IMU initialized successfully");
-    setupIMUDataRate(lsm6ds1, lis3mdl1, lsm6ds2, lis3mdl2);
-    loadCalibrationImu(calibrationImu1, calibrationImu2, IMU1_CAL_EEPROM_ADDR, IMU2_CAL_EEPROM_ADDR,
-                       imuEulerCalibration1, imuEulerCalibration2);
-    setupImuInterrupts(lsm6ds1, lis3mdl1, lsm6ds2, lis3mdl2);
-  }
+  Serial.println("Fuel gauge initialized");
+
+  imu1Status = initIMU(lsm6ds1, lis3mdl1, ADDRESS_LSM6DS1, ADDRESS_LIS3MDL1,
+                       overallStatusDataUnion, fusion1, calibrationImu1, IMU1_CAL_EEPROM_ADDR,
+                       imuEulerCalibration1, IMU1_INT_PIN, IMU1ID, timestamp1);
+
+  imu2Status = initIMU(lsm6ds2, lis3mdl2, ADDRESS_LSM6DS2, ADDRESS_LIS3MDL2,
+                       overallStatusDataUnion, fusion2, calibrationImu2, IMU2_CAL_EEPROM_ADDR,
+                       imuEulerCalibration2, IMU2_INT_PIN, IMU2ID, timestamp2);
 
   setupBLEGamepad(bleGamepad, bleGamepadConfig);
+
   processMotor();
+
   cycleRGBOnce();
+
   updateOverallStatusData(overallStatusDataUnion);
 }
 
 void appprocess()
 {
-
-  if (getImu1Status() || getImu2Status())
-  {
-
-    if (imuDataIMU1Ready)
+   if (imuDataIMUReady1)
     {
-      readDataIMU1(lsm6ds1, lis3mdl1, calibrationImu1, fusion1, imuDataRawUnion1, imuEulerCalibration1, bleGamepad);
-      imuDataIMU1Ready = false;
-    }else {
-      readDataIMU1(lsm6ds1, lis3mdl1, calibrationImu1, fusion1, imuDataRawUnion1, imuEulerCalibration1, bleGamepad);
+        if (imu1Status)
+        {
+            readDataIMU(lsm6ds1, lis3mdl1, calibrationImu1, fusion1, 
+                       imuDataRawUnion1, imuEulerCalibration1, bleGamepad, imu1Status, timestamp1);
+            sendDataBLE(bleGamepad, imuDataRawUnion1, imuEulerCalibration1, true);
+        }
+        imuDataIMUReady1 = false;
+    }
+    else if (imu1Status && (millis() - timestamp1 >= 200)) 
+    {
+        readDataIMU(lsm6ds1, lis3mdl1, calibrationImu1, fusion1, 
+                   imuDataRawUnion1, imuEulerCalibration1, bleGamepad, imu1Status, timestamp1);
+        sendDataBLE(bleGamepad, imuDataRawUnion1, imuEulerCalibration1, true);
     }
 
-    if (imuDataIMU2Ready)
+    if (imuDataIMUReady2)
     {
-
-      readDataIMU2(lsm6ds2, lis3mdl2, calibrationImu2, fusion2, imuDataRawUnion2, imuEulerCalibration2,bleGamepad);
-      imuDataIMU2Ready = false;
+        if (imu2Status)
+        {
+            readDataIMU(lsm6ds2, lis3mdl2, calibrationImu2, fusion2, 
+                       imuDataRawUnion2, imuEulerCalibration2, bleGamepad, imu2Status, timestamp2);
+            sendDataBLE(bleGamepad, imuDataRawUnion2, imuEulerCalibration2, false);
+        }
+        imuDataIMUReady2 = false;  
     }
-    else
+    else if (imu2Status && (millis() - timestamp2 >= 200)) 
     {
-      readDataIMU2(lsm6ds2, lis3mdl2, calibrationImu2, fusion2, imuDataRawUnion2, imuEulerCalibration2,bleGamepad);
+        readDataIMU(lsm6ds2, lis3mdl2, calibrationImu2, fusion2, 
+                   imuDataRawUnion2, imuEulerCalibration2, bleGamepad, imu2Status, timestamp2);
+        sendDataBLE(bleGamepad, imuDataRawUnion2, imuEulerCalibration2, false);
     }
-    /* senDataBLE(bleGamepad, joystickDataUnion, imuDataRawUnion1, imuDataRawUnion2,
-                imuEulerCalibration1, imuEulerCalibration2);*/
-    if (bleGamepad.isConnected())
+
+ 
+    if (millis() - lastFlexSensorReadTime >= readFlexSensorInterval)
     {
-      bleCalibration(configData, imuEulerCalibration1,
-                     imuEulerCalibration2, bleGamepad, calibrationImu1, calibrationImu2);
+        readFlexSensor(flexSensorDataUnion, bleGamepad);
+        readForceSensor(forceSensorData, bleGamepad);
+        checkbuttons(buttonDataUnion, bleGamepad);
+        lastFlexSensorReadTime = millis();
     }
-  }
 
-  if (millis() - lastFlexSensorReadTime >= readFlexSensorInterval)
-  {
-    readFlexSensor(flexSensorDataUnion, bleGamepad);
-    readForceSensor(forceSensorData, bleGamepad);
-    checkbuttons(buttonDataUnion, bleGamepad);
-    lastFlexSensorReadTime = millis();
-  }
+    if (millis() - lastJoysticReadTime >= JoystickReadInterval)
+    {
+        readJoystick(joystickDataUnion);
+        updateJoystickBle(bleGamepad, joystickDataUnion);
+        lastJoysticReadTime = millis();
+    }
 
-  if (millis() - lastJoysticReadTime >= JoystickReadInterval)
-  {
-    readJoystick(joystickDataUnion);
-    updateJoystickBle(bleGamepad, joystickDataUnion);
-    lastJoysticReadTime = millis();
-  }
+    if (millis() - lastBatteryCheckTime >= batteryCheckInterval)
+    {
+        readBatteryData(batteryData, fuelGauge);
+        upBatteryBLE(batteryData, bleGamepad);
+        lastBatteryCheckTime = millis();
+    }
 
-  if (millis() - lastBatteryCheckTime >= batteryCheckInterval)
-  {
-    readBatteryData(batteryData, fuelGauge);
-    upBatteryBLE(batteryData, bleGamepad);
-    lastBatteryCheckTime = millis();
-  }
-  if (bleGamepad.isOnWriteConfig && bleGamepad.isRightSize)
-  {
-    onwriteJoystic(configDataCheckUnion, bleGamepad);
-  }
-
-  if (bleGamepad.isOnWriteConfig && bleGamepad.isRightSize)
-  {
-    onWrieconfig(configDataCheckUnion, configData, bleGamepad);
-  }
+    // BLE Configuration handling
+    if (bleGamepad.isOnWriteConfig == 1 )
+    {
+        onwriteJoystic(configDataCheckUnion, bleGamepad);
+    }
+    
+    handleBLEConfig(configDataCheckUnion, bleGamepad);
 
   // processSwithChange();
 }
@@ -239,19 +250,19 @@ void saveSetting(EEPROMDataCheckUnion &configData)
 void resetEEPROMDefaul(EEPROMDataCheckUnion &configData)
 {
 
-  configData.EEPROMDataCheck.IMU1AccelYyroRateHz = LSM6DS_RATE_104_HZ;
-  configData.EEPROMDataCheck.IMU1MagFreqHz = LIS3MDL_DATARATE_155_HZ;
+  configData.EEPROMDataCheck.IMU1AccelYyroRateHz = LSM6DS_RATE_52_HZ;
+  configData.EEPROMDataCheck.IMU1MagFreqHz = LIS3MDL_DATARATE_80_HZ;
   configData.EEPROMDataCheck.IMU1AccelRangeG = LSM6DS_ACCEL_RANGE_2_G;
   configData.EEPROMDataCheck.IMU1GyroRangeDps = LSM6DS_GYRO_RANGE_250_DPS;
   configData.EEPROMDataCheck.IMU1MagRangeGaus = LIS3MDL_RANGE_4_GAUSS;
 
-  configData.EEPROMDataCheck.IMU2AccelGyroFreqHz = LSM6DS_RATE_104_HZ;
-  configData.EEPROMDataCheck.IMU2MagFreqHz = LIS3MDL_DATARATE_155_HZ;
+  configData.EEPROMDataCheck.IMU2AccelGyroFreqHz = LSM6DS_RATE_52_HZ;
+  configData.EEPROMDataCheck.IMU2MagFreqHz = LIS3MDL_DATARATE_80_HZ;
   configData.EEPROMDataCheck.IMU2AccelRangeG = LSM6DS_ACCEL_RANGE_2_G;
   configData.EEPROMDataCheck.IMU2GyroRangeDps = LSM6DS_GYRO_RANGE_250_DPS;
   configData.EEPROMDataCheck.IMU2MagRangeGauss = LIS3MDL_RANGE_4_GAUSS;
 
-  configData.EEPROMDataCheck.JoystickFlexSensorRate = 100;
+  configData.EEPROMDataCheck.JoystickFlexSensorRate = 1000;
   saveSetting(configData);
 }
 
@@ -291,25 +302,8 @@ void updateOverallStatusData(OverallStatusDataUnion &overallStatusData)
 {
   overallStatusData.overallStatusData.statusode = statusCode::NO_ERROR;
   overallStatusData.overallStatusData.FuelgauseStatus = fuelGauge.isDeviceReady() ? statusCodeSensor::RUNNING : statusCodeSensor::FAILED;
-
-  if (getImu1Status())
-  {
-    overallStatusData.overallStatusData.Imu1Status = statusCodeSensor::RUNNING;
-  }
-  else
-  {
-    overallStatusData.overallStatusData.Imu1Status = statusCodeSensor::FAILED;
-  }
-
-  if (getImu2Status())
-  {
-    overallStatusData.overallStatusData.Imu2Status = statusCodeSensor::RUNNING;
-  }
-  else
-  {
-
-    overallStatusData.overallStatusData.Imu2Status = statusCodeSensor::FAILED;
-  }
+  overallStatusData.overallStatusData.Imu1Status = imu1Status ? statusCodeSensor::RUNNING : statusCodeSensor::FAILED;
+  overallStatusData.overallStatusData.Imu2Status = imu2Status ? statusCodeSensor::RUNNING : statusCodeSensor::FAILED;
 }
 
 /*
@@ -324,40 +318,32 @@ void updateOverallStatusData(OverallStatusDataUnion &overallStatusData)
  * @param lsm6ds2 Reference to the second LSM6DS3TRC sensor
  * @param lis3mdl2 Reference to the second LIS3MDL sensor
 */
-void setupImuInterrupts(Adafruit_LSM6DS3TRC &lsm6ds1, Adafruit_LIS3MDL &lis3mdl1,
-                        Adafruit_LSM6DS3TRC &lsm6ds2, Adafruit_LIS3MDL &lis3mdl2)
+void setupImuInterrupts(Adafruit_LSM6DS3TRC &lsm6ds, Adafruit_LIS3MDL &lis3mdl, uint8_t pin, uint8_t imuId)
 {
-
-  if (getImu1Status())
+  pinMode(pin, INPUT);
+  if (imuId == 1)
   {
-
-    pinMode(IMU1_INT_PIN, INPUT);
-    attachInterrupt(digitalPinToInterrupt(IMU1_INT_PIN), imu1InterruptHandler, LOW);
-    lsm6ds1.configInt1(false, false, true);
-    lis3mdl1.configInterrupt(true, true, true, false, false, true);
-    Serial.println("IMU1 interrupts configured");
+    attachInterrupt(digitalPinToInterrupt(pin), imuInterruptHandlerImu1, LOW);
   }
-
-  if (getImu2Status())
+  else if (imuId == 2)
   {
-
-    pinMode(IMU2_INT_PIN, INPUT);
-    attachInterrupt(digitalPinToInterrupt(IMU2_INT_PIN), imu2InterruptHandler, LOW);
-    lsm6ds2.configInt1(false, false, true);
-    lis3mdl2.configInterrupt(true, true, true, false, false, true);
-    Serial.println("IMU2 interrupts configured");
+    attachInterrupt(digitalPinToInterrupt(pin), imuInterruptHandlerImu2, LOW);
   }
+  lsm6ds.configInt1(false, false, true);
+  lis3mdl.configInterrupt(true, true, true, false, false, true);
+  Serial.println("IMU interrupts configured");
 }
 
 /*
 @brief Interrupt handler for IMU
 */
-void IRAM_ATTR imu1InterruptHandler()
+void IRAM_ATTR imuInterruptHandlerImu1()
 {
-  imuDataIMU1Ready = true;
+
+  imuDataIMUReady1 = true;
 }
 
-void IRAM_ATTR imu2InterruptHandler()
+void IRAM_ATTR imuInterruptHandlerImu2()
 {
-  imuDataIMU2Ready = true;
+  imuDataIMUReady2 = true;
 }

@@ -24,8 +24,11 @@
 #define ADDRESS_LIS3MDL2 0x1C
 #define IMU1_INT_PIN 40
 #define IMU2_INT_PIN 38
+#define IMU1ID 1
+#define IMU2ID 2
 #define I2C_SDA_PIN 34
 #define I2C_SCL_PIN 33
+#define MAX17048_PIN 26
 #define VSVY_EN_PIN 18
 #define SW_DE_PIN 17
 #define LED_GREEN_PIN 37
@@ -34,7 +37,7 @@
 #define MOTOR_EN_PIN 13
 #define NUM_FLEX 5
 #define FORECE_SENSOR_PIN 11
-#define FILTER_UPDATE_RATE_HZ 100
+#define FILTER_UPDATE_RATE_HZ 5
 #define NUM_IMUS 2
 #define NUM_BUTTONS 4
 #define BYTE_CHECK1 0x75
