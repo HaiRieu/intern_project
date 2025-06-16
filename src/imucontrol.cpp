@@ -60,7 +60,7 @@ bool imuStart(Adafruit_LSM6DS3TRC &lsm6ds,
     return imuStatusLsm6ds && imuStatusLis3mdl;
 }
 
-void setupIMUDataRate(Adafruit_LSM6DS3TRC &lsm6ds, Adafruit_LIS3MDL &lis3mdl)
+void setupIMUDataRate(Adafruit_LSM6DS3TRC &lsm6ds, Adafruit_LIS3MDL &lis3mdl , lsm6ds_data_rate_t )
 {
 
     lsm6ds.setAccelDataRate(LSM6DS_RATE_52_HZ);
@@ -155,13 +155,14 @@ void readDataIMU(Adafruit_LSM6DS3TRC &lsm6ds,
         lsm6ds.getEvent(&accel, &gyro, &temp);
         lis3mdl.getEvent(&mag);
 
-        if (bleGamepad.isOnWriteConfig)
-        {
+     //   if (bleGamepad.isOnWriteConfig == 1)
+     //   {
             cal.calibrate(accel);
             cal.calibrate(gyro);
             cal.calibrate(mag);
             cal.saveCalibration();
-        }
+            bleGamepad.isOnWriteConfig = 0;
+  //      }
 
          if ((millis() - timestamp) < (1000 / FILTER_UPDATE_RATE_HZ) )
           {
@@ -383,7 +384,7 @@ void bleCalibration(ImuJoystickUnion &imuJoystickUnion, IMUEulernUnion &imu1Eule
                     IMUEulernUnion &imu2EulernUnion, BleGamepad &bleGamepad,
                     Adafruit_Sensor_Calibration_EEPROM &cal1, Adafruit_Sensor_Calibration_EEPROM &cal2)
 {
-    if (bleGamepad.isOnWriteConfig && bleGamepad.isRightSize)
+    if (bleGamepad.isOnWriteConfig == 1 && bleGamepad.isRightSize == 1)
     {
         bleGamepad.getcharacterData(bleGamepad.Config, imuJoystickUnion.rawData);
         if (imuJoystickUnion.configDataImuJOTISK.CMD == 2)

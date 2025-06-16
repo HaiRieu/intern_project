@@ -141,7 +141,7 @@ typedef struct __attribute__((packed))
 typedef union __attribute__((packed))
 {
   IMUAndJoystickConfig configDataImuJOTISK;
-  uint8_t rawData[13];
+  uint8_t rawData[15];
 } ImuJoystickUnion;
 
 /*

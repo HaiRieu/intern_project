@@ -96,7 +96,8 @@ void processSwithChange();
 
 void onwriteJoystic(EEPROMDataCheckUnion &joystickDataUnion, BleGamepad &bleGamepad);
 
-bool onWriteconfig(EEPROMDataCheckUnion &configData, ImuJoystickUnion &imuJoystickUnion, BleGamepad &bleGamepad);
+bool onWriteconfig(EEPROMDataCheckUnion &configData, BleGamepad &bleGamepad,
+                   ImuJoystickUnion &imuJoystickUnion);
 
 void bleCalibration(ImuJoystickUnion &imuJoystickUnion,
                     IMUEulernUnion &imu1EulernUnion,
@@ -112,6 +113,10 @@ void sendDataBLE(BleGamepad &bleGamepad,
                  IMUEulernUnion &IMUeurle,
                  bool isIMU);
 
-void handleBLEConfig(EEPROMDataCheckUnion &configDataCheckUnion, BleGamepad &bleGamepad );
+void handleBLEConfig(EEPROMDataCheckUnion &configDataCheckUnion, BleGamepad &bleGamepad,
+                     ImuJoystickUnion &imuJoystickUnion);
+
+
+bool loadconfigEEProm(EEPROMDataCheckUnion &configData);                     
 
 #endif

@@ -1,7 +1,6 @@
 
 #include "functiondef.h"
 
-
 unsigned long lastWriteTime = 0;
 /*
 brief Setup BLE Gamepad
@@ -47,185 +46,346 @@ void onwriteJoystic(EEPROMDataCheckUnion &joystickDataUnion, BleGamepad &bleGame
 @param rateValue The rate value to configure the IMU1 accelerometer and gyroscope
 This function sets the IMU1 accelerometer and gyroscope rate based on the provided rate value. It maps the rate value to a specific LSM6DS rate constant.
 */
-void configureIMUAccelGyroRate(EEPROMDataCheckUnion &configData, uint8_t rateValue)
+void configureIMUAccelGyroRate(EEPROMDataCheckUnion &configData, uint8_t rateValue, uint8_t idIMU)
 {
+    uint8_t value;
     switch (rateValue)
     {
     case 0:
-        configData.EEPROMDataCheck.IMU1AccelYyroRateHz = LSM6DS_RATE_SHUTDOWN;
+        value = LSM6DS_RATE_SHUTDOWN;
         break;
 
     case 1:
-        configData.EEPROMDataCheck.IMU1AccelYyroRateHz = LSM6DS_RATE_12_5_HZ;
+        value = LSM6DS_RATE_12_5_HZ;
         break;
 
     case 2:
-        configData.EEPROMDataCheck.IMU1AccelYyroRateHz = LSM6DS_RATE_26_HZ;
+        value = LSM6DS_RATE_26_HZ;
         break;
 
     case 3:
-        configData.EEPROMDataCheck.IMU1AccelYyroRateHz = LSM6DS_RATE_52_HZ;
+        value = LSM6DS_RATE_52_HZ;
         break;
 
     case 4:
-        configData.EEPROMDataCheck.IMU1AccelYyroRateHz = LSM6DS_RATE_104_HZ;
+        value = LSM6DS_RATE_104_HZ;
         break;
 
     case 5:
-        configData.EEPROMDataCheck.IMU1AccelYyroRateHz = LSM6DS_RATE_208_HZ;
+        value = LSM6DS_RATE_208_HZ;
         break;
 
     case 6:
-        configData.EEPROMDataCheck.IMU1AccelYyroRateHz = LSM6DS_RATE_416_HZ;
+        value = LSM6DS_RATE_416_HZ;
         break;
 
     default:
+        value = LSM6DS_RATE_52_HZ;
         break;
+    }
+
+    if (idIMU == 1)
+    {
+        configData.EEPROMDataCheck.IMU1AccelYyroRateHz = value;
+    }
+    else if (idIMU == 2)
+    {
+        configData.EEPROMDataCheck.IMU2AccelGyroFreqHz = value;
     }
 }
 
-/*
-@brief Function to configure the IMU1 magnetometer frequency based on the provided rate value.
-@param configData Reference to the EEPROMDataCheckUnion containing configuration data
-@param rateValue The rate value to configure the IMU1 magnetometer frequency
-This function sets the IMU1 magnetometer frequency based on the provided rate value. It maps the rate value to a specific LIS3MDL data rate constant.
-*/
-void configureImuMagFreqHz(EEPROMDataCheckUnion &configData, uint8_t rateValue)
+void configureImuMagFreqHz(EEPROMDataCheckUnion &configData, uint8_t rateValue, uint8_t idIMU)
 {
+    uint8_t value;
     switch (rateValue)
     {
     case 0:
-        configData.EEPROMDataCheck.IMU1MagFreqHz = LIS3MDL_DATARATE_0_625_HZ;
+        value = LIS3MDL_DATARATE_0_625_HZ;
         break;
 
     case 1:
-        configData.EEPROMDataCheck.IMU1MagFreqHz = LIS3MDL_DATARATE_1_25_HZ;
+        value = LIS3MDL_DATARATE_1_25_HZ;
         break;
 
     case 2:
-        configData.EEPROMDataCheck.IMU1MagFreqHz = LIS3MDL_DATARATE_2_5_HZ;
+        value = LIS3MDL_DATARATE_2_5_HZ;
         break;
 
     case 3:
-        configData.EEPROMDataCheck.IMU1MagFreqHz = LIS3MDL_DATARATE_5_HZ;
+        value = LIS3MDL_DATARATE_5_HZ;
         break;
 
     case 4:
-        configData.EEPROMDataCheck.IMU1MagFreqHz = LIS3MDL_DATARATE_10_HZ;
+        value = LIS3MDL_DATARATE_10_HZ;
         break;
 
     case 5:
-        configData.EEPROMDataCheck.IMU1MagFreqHz = LIS3MDL_DATARATE_20_HZ;
+        value = LIS3MDL_DATARATE_20_HZ;
         break;
 
     case 6:
-        configData.EEPROMDataCheck.IMU1MagFreqHz = LIS3MDL_DATARATE_40_HZ;
+        value = LIS3MDL_DATARATE_40_HZ;
         break;
 
     case 7:
-        configData.EEPROMDataCheck.IMU1MagFreqHz = LIS3MDL_DATARATE_80_HZ;
+        value = LIS3MDL_DATARATE_80_HZ;
         break;
 
     default:
         break;
     }
+
+    if (idIMU == 1)
+    {
+        configData.EEPROMDataCheck.IMU1MagFreqHz = value;
+    }
+    else if (idIMU == 2)
+    {
+        configData.EEPROMDataCheck.IMU2MagFreqHz = value;
+    }
 }
 
-/*
-@brief Function to configure the IMU1 accelerometer range in G based on the provided rate value.
-@param configData Reference to the EEPROMDataCheckUnion containing configuration data
-@param rateValue The rate value to configure the IMU1 accelerometer range in G
-This function sets the IMU1 accelerometer range in G based on the provided rate value. It maps the rate value to a specific LSM6DS accelerometer range constant.
-*/
-void configureImuAccelRangeG(EEPROMDataCheckUnion &configData, uint8_t rateValue)
+void configureIMUMagRange(EEPROMDataCheckUnion &configData, uint8_t rangeValue, uint8_t idIMU)
 {
-    switch (rateValue)
+    uint8_t value;
+    switch (rangeValue)
     {
     case 0:
-        configData.EEPROMDataCheck.IMU1AccelRangeG = LSM6DS_ACCEL_RANGE_2_G;
+        value = LIS3MDL_RANGE_4_GAUSS;
         break;
 
     case 1:
-        configData.EEPROMDataCheck.IMU1AccelRangeG = LSM6DS_ACCEL_RANGE_4_G;
+        value = LIS3MDL_RANGE_8_GAUSS;
         break;
 
     case 2:
-        configData.EEPROMDataCheck.IMU1AccelRangeG = LSM6DS_ACCEL_RANGE_8_G;
+        value = LIS3MDL_RANGE_12_GAUSS;
         break;
 
     case 3:
-        configData.EEPROMDataCheck.IMU1AccelRangeG = LSM6DS_ACCEL_RANGE_16_G;
+        value = LIS3MDL_RANGE_16_GAUSS;
         break;
 
     default:
         break;
     }
+
+    if (idIMU == 1)
+    {
+        configData.EEPROMDataCheck.IMU1MagRangeGaus = value;
+    }
+    else if (idIMU == 2)
+    {
+        configData.EEPROMDataCheck.IMU2MagRangeGauss = value;
+    }
 }
 
-/*
-@brief Function to configure the IMU1 gyroscope range in degrees per second (dps) based on the provided rate value.
-@param configData Reference to the EEPROMDataCheckUnion containing configuration data
-@param rateValue The rate value to configure the IMU1 gyroscope range in dps
-This function sets the IMU1 gyroscope range in dps based on the provided rate value. It maps the rate value to a specific LSM6DS gyroscope range constant.
-*/
-void configureImuGyroRangeDps(EEPROMDataCheckUnion &configData, uint8_t rateValue)
+void configureIMUAccelRange(EEPROMDataCheckUnion &configData, uint8_t rangeValue, uint8_t idIMU)
 {
-    switch (rateValue)
+    uint8_t value;
+    switch (rangeValue)
     {
     case 0:
-        configData.EEPROMDataCheck.IMU1GyroRangeDps = LSM6DS_GYRO_RANGE_125_DPS;
+        value = LSM6DS_ACCEL_RANGE_2_G;
         break;
 
     case 1:
-        configData.EEPROMDataCheck.IMU1GyroRangeDps = LSM6DS_GYRO_RANGE_250_DPS;
+        value = LSM6DS_ACCEL_RANGE_4_G;
         break;
 
     case 2:
-        configData.EEPROMDataCheck.IMU1GyroRangeDps = LSM6DS_GYRO_RANGE_500_DPS;
+        value = LSM6DS_ACCEL_RANGE_8_G;
         break;
 
     case 3:
-        configData.EEPROMDataCheck.IMU1GyroRangeDps = LSM6DS_GYRO_RANGE_1000_DPS;
+        value = LSM6DS_ACCEL_RANGE_16_G;
+        break;
+
+    default:
+        break;
+    }
+
+    if (idIMU == 1)
+    {
+        configData.EEPROMDataCheck.IMU1AccelRangeG = value;
+    }
+    else if (idIMU == 2)
+    {
+        configData.EEPROMDataCheck.IMU2AccelRangeG = value;
+    }
+}
+
+void configureIMUGyroRange(EEPROMDataCheckUnion &configData, uint8_t rangeValue, uint8_t idIMU)
+{
+    uint8_t value;
+    switch (rangeValue)
+    {
+    case 0:
+        value = LSM6DS_GYRO_RANGE_125_DPS;
+        break;
+
+    case 1:
+        value = LSM6DS_GYRO_RANGE_250_DPS;
+        break;
+
+    case 2:
+        value = LSM6DS_GYRO_RANGE_500_DPS;
+        break;
+
+    case 3:
+        value = LSM6DS_GYRO_RANGE_1000_DPS;
         break;
 
     case 4:
-        configData.EEPROMDataCheck.IMU1GyroRangeDps = LSM6DS_GYRO_RANGE_2000_DPS;
+        value = LSM6DS_GYRO_RANGE_2000_DPS;
         break;
 
     default:
         break;
+    }
+
+    if (idIMU == 1)
+    {
+        configData.EEPROMDataCheck.IMU1GyroRangeDps = value;
+    }
+    else if (idIMU == 2)
+    {
+        configData.EEPROMDataCheck.IMU2GyroRangeDps = value;
     }
 }
 
-/*
-@brief Function to configure the IMU1 magnetometer range in Gauss based on the provided rate value.
-@param configData Reference to the EEPROMDataCheckUnion containing configuration data
-@param rateValue The rate value to configure the IMU1 magnetometer range in Gauss
-This function sets the IMU1 magnetometer range in Gauss based on the provided rate value. It maps the rate value to a specific LIS3MDL range constant.
-*/
-void configureImuMagRangeGaus(EEPROMDataCheckUnion &configData, uint8_t rateValue)
+uint8_t convertImuAccelGyroRate(uint8_t rate)
 {
-    switch (rateValue)
+    switch (rate)
     {
-    case 0:
-        configData.EEPROMDataCheck.IMU1MagRangeGaus = LIS3MDL_RANGE_4_GAUSS;
-        break;
+    case LSM6DS_RATE_SHUTDOWN:
+        return 0;
+    case LSM6DS_RATE_12_5_HZ:
+        return 1;
 
-    case 1:
-        configData.EEPROMDataCheck.IMU1MagRangeGaus = LIS3MDL_RANGE_8_GAUSS;
-        break;
+    case LSM6DS_RATE_26_HZ:
+        return 2;
 
-    case 2:
-        configData.EEPROMDataCheck.IMU1MagRangeGaus = LIS3MDL_RANGE_12_GAUSS;
-        break;
+    case LSM6DS_RATE_52_HZ:
+        return 3;
 
-    case 3:
-        configData.EEPROMDataCheck.IMU1MagRangeGaus = LIS3MDL_RANGE_16_GAUSS;
-        break;
+    case LSM6DS_RATE_104_HZ:
+        return 4;
+
+    case LSM6DS_RATE_208_HZ:
+        return 5;
+
+    case LSM6DS_RATE_416_HZ:
+        return 6;
 
     default:
-        break;
+        return 0;
     }
+}
+
+uint8_t convertImuMagRate(uint8_t rate)
+{
+    switch (rate)
+    {
+    case LIS3MDL_DATARATE_0_625_HZ:
+        return 0;
+    case LIS3MDL_DATARATE_1_25_HZ:
+        return 1;
+
+    case LIS3MDL_DATARATE_2_5_HZ:
+        return 2;
+
+    case LIS3MDL_DATARATE_5_HZ:
+        return 3;
+
+    case LIS3MDL_DATARATE_10_HZ:
+        return 4;
+
+    case LIS3MDL_DATARATE_20_HZ:
+        return 5;
+
+    case LIS3MDL_DATARATE_40_HZ:
+        return 6;
+
+    case LIS3MDL_DATARATE_80_HZ:
+        return 7;
+
+    default:
+        return 0;
+    }
+}
+
+uint8_t convertImuMagRangeGaus(uint8_t range)
+{
+    switch (range)
+    {
+    case LIS3MDL_RANGE_4_GAUSS:
+        return 0;
+    case LIS3MDL_RANGE_8_GAUSS:
+        return 1;
+
+    case LIS3MDL_RANGE_12_GAUSS:
+        return 2;
+
+    case LIS3MDL_RANGE_16_GAUSS:
+        return 3;
+
+    default:
+        return 0;
+    }
+}
+
+uint8_t convertImuAccelRangeG(uint8_t range)
+{
+    switch (range)
+    {
+    case LSM6DS_ACCEL_RANGE_2_G:
+        return 0;
+    case LSM6DS_ACCEL_RANGE_4_G:
+        return 1;
+
+    case LSM6DS_ACCEL_RANGE_8_G:
+        return 2;
+
+    case LSM6DS_ACCEL_RANGE_16_G:
+        return 3;
+
+    default:
+        return 0;
+    }
+}
+
+uint8_t convertImuGyroRangeDps(uint8_t range)
+{
+    switch (range)
+    {
+    case LSM6DS_GYRO_RANGE_125_DPS:
+        return 0;
+    case LSM6DS_GYRO_RANGE_250_DPS:
+        return 1;
+
+    case LSM6DS_GYRO_RANGE_500_DPS:
+        return 2;
+
+    case LSM6DS_GYRO_RANGE_1000_DPS:
+        return 3;
+
+    case LSM6DS_GYRO_RANGE_2000_DPS:
+        return 4;
+
+    default:
+        return 0;
+    }
+}
+
+bool loadconfigEEProm(EEPROMDataCheckUnion &configData)
+{
+    if (restoreSettings(configData))
+    {
+        return true;
+    }
+
+    return false;
 }
 
 /*
@@ -236,51 +396,89 @@ void configureImuMagRangeGaus(EEPROMDataCheckUnion &configData, uint8_t rateValu
 This function retrieves the configuration data from the BLE Gamepad, updates the IMU and
  joystick settings based on the provided configuration, and saves the updated settings to EEPROM.
 */
-bool onWriteconfig(EEPROMDataCheckUnion &configData, BleGamepad &bleGamepad)
+bool onWriteconfig(EEPROMDataCheckUnion &configData, BleGamepad &bleGamepad, ImuJoystickUnion &imuJoystickUnion)
 {
-    if (bleGamepad.isOnWriteConfig == 1)
+
+    Serial.print("is onWriteConfig: ");
+    Serial.println(bleGamepad.isOnWriteConfig);
+    Serial.print("is onReadConfig: ");
+    Serial.println(bleGamepad.isOnReadConfig);
+
+    if (bleGamepad.isConnected())
     {
-        Serial.println("alohaaaaaaaaa");
-        bleGamepad.isOnReadConfig = 0 ; 
+        loadconfigEEProm(configData);
+        imuJoystickUnion.configDataImuJOTISK.IMU1AccelYyroRateHz = convertImuAccelGyroRate(configData.EEPROMDataCheck.IMU1AccelYyroRateHz);
+        imuJoystickUnion.configDataImuJOTISK.IMU1MagFreqHz = convertImuMagRate(configData.EEPROMDataCheck.IMU1MagFreqHz);
+        imuJoystickUnion.configDataImuJOTISK.IMU1AccelRangeG = convertImuAccelRangeG(configData.EEPROMDataCheck.IMU1AccelRangeG);
+        imuJoystickUnion.configDataImuJOTISK.IMU1MagRangeGaus = convertImuMagRangeGaus(configData.EEPROMDataCheck.IMU1MagRangeGaus);
+        imuJoystickUnion.configDataImuJOTISK.IMU1GyroRangeDps = convertImuGyroRangeDps(configData.EEPROMDataCheck.IMU1GyroRangeDps);
 
-         Serial.print("Received config data length: ");
-   
-        bleGamepad.getcharacterData(bleGamepad.Config, configData.rawData);
-        configureIMUAccelGyroRate(configData, configData.EEPROMDataCheck.IMU1AccelYyroRateHz);
-        configureImuMagFreqHz(configData, configData.EEPROMDataCheck.IMU1MagFreqHz);
-        configureImuAccelRangeG(configData, configData.EEPROMDataCheck.IMU1AccelRangeG);
-        configureImuGyroRangeDps(configData, configData.EEPROMDataCheck.IMU1GyroRangeDps);
-        configureImuMagRangeGaus(configData, configData.EEPROMDataCheck.IMU1MagRangeGaus);
+        imuJoystickUnion.configDataImuJOTISK.IMU2AccelGyroFreqHz = convertImuAccelGyroRate(configData.EEPROMDataCheck.IMU2AccelGyroFreqHz);
+        imuJoystickUnion.configDataImuJOTISK.IMU2MagFreqHz = convertImuMagRate(configData.EEPROMDataCheck.IMU2MagFreqHz);
+        imuJoystickUnion.configDataImuJOTISK.IMU2AccelRangeG = convertImuAccelRangeG(configData.EEPROMDataCheck.IMU2AccelRangeG);
+        imuJoystickUnion.configDataImuJOTISK.IMU2MagRangeGauss = convertImuMagRangeGaus(configData.EEPROMDataCheck.IMU2MagRangeGauss);
+        imuJoystickUnion.configDataImuJOTISK.IMU2GyroRangeDps = convertImuGyroRangeDps(configData.EEPROMDataCheck.IMU2GyroRangeDps);
 
-        configureIMUAccelGyroRate(configData, configData.EEPROMDataCheck.IMU2AccelGyroFreqHz);
-        configureImuMagFreqHz(configData, configData.EEPROMDataCheck.IMU2MagFreqHz);
-        configureImuAccelRangeG(configData, configData.EEPROMDataCheck.IMU2AccelRangeG);
-        configureImuGyroRangeDps(configData, configData.EEPROMDataCheck.IMU2GyroRangeDps);
-        configureImuMagRangeGaus(configData, configData.EEPROMDataCheck.IMU2MagRangeGauss);
+        imuJoystickUnion.configDataImuJOTISK.JoystickFlexSensorRate = configData.EEPROMDataCheck.JoystickFlexSensorRate;
 
-        saveSetting(configData);
-        bleGamepad.isOnWriteConfig = 0;
+        bleGamepad.setterCharacterData(bleGamepad.Config, imuJoystickUnion.rawData, sizeof(imuJoystickUnion.rawData));
+
+     //   if (bleGamepad.isOnWriteConfig == 1 && bleGamepad.isRightSize == 1)
+    //    {
+            Serial.println("alohaaaaaaaaa");
+         //   Serial.print("Received config data length: ");
+       
+            bleGamepad.getcharacterData(bleGamepad.Config, imuJoystickUnion.rawData);
+
+
+            configureIMUAccelGyroRate(configData, imuJoystickUnion.configDataImuJOTISK.IMU1AccelYyroRateHz, 1);
+            configureImuMagFreqHz(configData, imuJoystickUnion.configDataImuJOTISK.IMU1MagFreqHz, 1);
+            configureIMUAccelRange(configData, imuJoystickUnion.configDataImuJOTISK.IMU1AccelRangeG, 1);
+            configureIMUMagRange(configData, imuJoystickUnion.configDataImuJOTISK.IMU1MagRangeGaus, 1);
+            configureIMUGyroRange(configData, imuJoystickUnion.configDataImuJOTISK.IMU1GyroRangeDps, 1);
+    
+            configureIMUAccelGyroRate(configData, imuJoystickUnion.configDataImuJOTISK.IMU2AccelGyroFreqHz, 2);
+            configureImuMagFreqHz(configData, imuJoystickUnion.configDataImuJOTISK.IMU2MagFreqHz, 2);
+            configureIMUAccelRange(configData, imuJoystickUnion.configDataImuJOTISK.IMU2AccelRangeG, 2);
+            configureIMUMagRange(configData, imuJoystickUnion.configDataImuJOTISK.IMU2MagRangeGauss, 2);
+            configureIMUGyroRange(configData, imuJoystickUnion.configDataImuJOTISK.IMU2GyroRangeDps, 2);
+     
+
+            saveSetting(configData);
+            bleGamepad.isOnWriteConfig = 0;
+            bleGamepad.isOnReadConfig = 0;
+            bleGamepad.isRightSize = 0;
+   //     }
         return true;
-
     }
     return false;
 }
 
-
-void handleBLEConfig(EEPROMDataCheckUnion &configData, BleGamepad &bleGamepad)
+void handleBLEConfig(EEPROMDataCheckUnion &configData, BleGamepad &bleGamepad, ImuJoystickUnion &imuJoystickUnion)
 {
-   
-    if (bleGamepad.isOnWriteConfig == 1) {
-        onWriteconfig(configData, bleGamepad);
+    Serial.print("is onWriteConfig: ");
+    Serial.println(bleGamepad.isOnWriteConfig);
+
+    Serial.print("is onReadConfig: ");
+    Serial.println(bleGamepad.isOnReadConfig);
+
+    if (bleGamepad.isOnWriteConfig == 1)
+    {
+
+        onWriteconfig(configData, bleGamepad, imuJoystickUnion);
         Serial.println("Processing Write Config...");
         return;
     }
-    
-   if (bleGamepad.isOnReadConfig == 1) {
-        if (millis() - lastWriteTime > 1000) {
+
+    if (bleGamepad.isOnReadConfig == 1)
+    {
+        if (millis() - lastWriteTime > 1000)
+        {
             Serial.println("Processing Read Config...");
             bleGamepad.isOnReadConfig = 0;
-        } else {
+        }
+        else
+        {
             Serial.println("Read ignored - recent write detected");
             bleGamepad.isOnReadConfig = 0;
         }

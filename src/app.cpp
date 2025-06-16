@@ -139,9 +139,13 @@ void appprocess()
     if (bleGamepad.isOnWriteConfig == 1 )
     {
         onwriteJoystic(configDataCheckUnion, bleGamepad);
+        bleGamepad.isOnWriteConfig = 0;
+
     }
-    
-    handleBLEConfig(configDataCheckUnion, bleGamepad);
+
+//    handleBLEConfig(configDataCheckUnion, bleGamepad, configData);
+
+onWriteconfig(configDataCheckUnion, bleGamepad, configData);
 
   // processSwithChange();
 }
@@ -171,14 +175,6 @@ uint16_t CRC16(uint16_t crc, uint8_t a)
   return crc;
 }
 
-/*
-@brief Restore settings from EEPROM
- * This function reads the settings from EEPROM and restores them into the provided configData structure.
- * It checks for a magic number to validate the data and calculates the CRC to ensure data integrity.
- * If the data is invalid or corrupted, it sets default settings.
- * @param configData Reference to the IMU_config_data_anJoystick_Union structure to store restored settings
- * @return true if settings were successfully restored, false otherwise
-*/
 bool restoreSettings(EEPROMDataCheckUnion &configData)
 {
   uint8_t buffer[EEPROM_TOTAL_SIZE];
@@ -220,7 +216,7 @@ void saveSetting(EEPROMDataCheckUnion &configData)
   buffer[0] = BYTE_CHECK1;
   buffer[1] = BYTE_CHECK2;
 
-  memcpy(buffer, configData.rawData, EEPROM_TOTAL_SIZE);
+  memcpy(buffer, configData.rawData, EEPROM_TOTAL_SIZE - 2);
 
   uint16_t crc = 0xFFFF;
   for (uint16_t i = 0; i < EEPROM_TOTAL_SIZE - 2; i++)
