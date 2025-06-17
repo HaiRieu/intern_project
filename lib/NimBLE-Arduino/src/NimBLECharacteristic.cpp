@@ -361,6 +361,7 @@ std::string NimBLECharacteristic::toString() const {
  */
 void NimBLECharacteristicCallbacks::onRead(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) {
     NIMBLE_LOGD("NimBLECharacteristicCallbacks", "onRead: default");
+    Serial.println("onRead callback triggered");
 } // onRead
 
 /**

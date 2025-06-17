@@ -12,6 +12,7 @@ Adafruit_MAX17048 fuelGauge;
 
 volatile bool imuDataIMUReady1 = false;
 volatile bool imuDataIMUReady2 = false;
+bool fugelGaugeStatus = false;
 bool imu1Status = false;
 bool imu2Status = false;
 
@@ -41,6 +42,13 @@ unsigned long JoystickReadInterval = 200;
 unsigned long lastBatteryCheckTime = 0;
 unsigned long batteryCheckInterval = 2000;
 
+unsigned long lastOverallStatusUpdateTime = 0;
+unsigned long overallStatusUpdateInterval = 100;
+
+unsigned long lastOnwrite = 0;
+unsigned long onwriteInterval = 200;
+
+
 void appsetup()
 {
 
@@ -56,7 +64,7 @@ void appsetup()
     Serial.println("to restore settings from EEPROM");
   }
 
-  initFuelGauge(fuelGauge, overallStatusDataUnion);
+  fugelGaugeStatus = initFuelGauge(fuelGauge, overallStatusDataUnion);
   Serial.println("Fuel gauge initialized");
 
   imu1Status = initIMU(lsm6ds1, lis3mdl1, ADDRESS_LSM6DS1, ADDRESS_LIS3MDL1,
@@ -78,74 +86,83 @@ void appsetup()
 
 void appprocess()
 {
-   if (imuDataIMUReady1)
+  if (imuDataIMUReady1)
+  {
+    if (imu1Status)
     {
-        if (imu1Status)
-        {
-            readDataIMU(lsm6ds1, lis3mdl1, calibrationImu1, fusion1, 
-                       imuDataRawUnion1, imuEulerCalibration1, bleGamepad, imu1Status, timestamp1);
-            sendDataBLE(bleGamepad, imuDataRawUnion1, imuEulerCalibration1, true);
-        }
-        imuDataIMUReady1 = false;
+      readDataIMU(lsm6ds1, lis3mdl1, calibrationImu1, fusion1,
+                  imuDataRawUnion1, imuEulerCalibration1, bleGamepad, imu1Status, timestamp1);
+      sendDataBLE(bleGamepad, imuDataRawUnion1, imuEulerCalibration1, true);
     }
-    else if (imu1Status && (millis() - timestamp1 >= 200)) 
+    imuDataIMUReady1 = false;
+  }
+  else if (imu1Status && (millis() - timestamp1 >= 200))
+  {
+    readDataIMU(lsm6ds1, lis3mdl1, calibrationImu1, fusion1,
+                imuDataRawUnion1, imuEulerCalibration1, bleGamepad, imu1Status, timestamp1);
+    sendDataBLE(bleGamepad, imuDataRawUnion1, imuEulerCalibration1, true);
+  }
+
+  if (imuDataIMUReady2)
+  {
+    if (imu2Status)
     {
-        readDataIMU(lsm6ds1, lis3mdl1, calibrationImu1, fusion1, 
-                   imuDataRawUnion1, imuEulerCalibration1, bleGamepad, imu1Status, timestamp1);
-        sendDataBLE(bleGamepad, imuDataRawUnion1, imuEulerCalibration1, true);
+      readDataIMU(lsm6ds2, lis3mdl2, calibrationImu2, fusion2,
+                  imuDataRawUnion2, imuEulerCalibration2, bleGamepad, imu2Status, timestamp2);
+      sendDataBLE(bleGamepad, imuDataRawUnion2, imuEulerCalibration2, false);
     }
+    imuDataIMUReady2 = false;
+  }
+  else if (imu2Status && (millis() - timestamp2 >= 200))
+  {
+    readDataIMU(lsm6ds2, lis3mdl2, calibrationImu2, fusion2,
+                imuDataRawUnion2, imuEulerCalibration2, bleGamepad, imu2Status, timestamp2);
+    sendDataBLE(bleGamepad, imuDataRawUnion2, imuEulerCalibration2, false);
+  }
 
-    if (imuDataIMUReady2)
-    {
-        if (imu2Status)
-        {
-            readDataIMU(lsm6ds2, lis3mdl2, calibrationImu2, fusion2, 
-                       imuDataRawUnion2, imuEulerCalibration2, bleGamepad, imu2Status, timestamp2);
-            sendDataBLE(bleGamepad, imuDataRawUnion2, imuEulerCalibration2, false);
-        }
-        imuDataIMUReady2 = false;  
-    }
-    else if (imu2Status && (millis() - timestamp2 >= 200)) 
-    {
-        readDataIMU(lsm6ds2, lis3mdl2, calibrationImu2, fusion2, 
-                   imuDataRawUnion2, imuEulerCalibration2, bleGamepad, imu2Status, timestamp2);
-        sendDataBLE(bleGamepad, imuDataRawUnion2, imuEulerCalibration2, false);
-    }
+  if (millis() - lastFlexSensorReadTime >= readFlexSensorInterval)
+  {
+    readFlexSensor(flexSensorDataUnion, bleGamepad);
+    readForceSensor(forceSensorData, bleGamepad);
+    checkbuttons(buttonDataUnion, bleGamepad);
+    lastFlexSensorReadTime = millis();
+  }
 
- 
-    if (millis() - lastFlexSensorReadTime >= readFlexSensorInterval)
-    {
-        readFlexSensor(flexSensorDataUnion, bleGamepad);
-        readForceSensor(forceSensorData, bleGamepad);
-        checkbuttons(buttonDataUnion, bleGamepad);
-        lastFlexSensorReadTime = millis();
-    }
+  if (millis() - lastJoysticReadTime >= JoystickReadInterval)
+  {
+    readJoystick(joystickDataUnion);
+    updateJoystickBle(bleGamepad, joystickDataUnion);
+    lastJoysticReadTime = millis();
+  }
 
-    if (millis() - lastJoysticReadTime >= JoystickReadInterval)
-    {
-        readJoystick(joystickDataUnion);
-        updateJoystickBle(bleGamepad, joystickDataUnion);
-        lastJoysticReadTime = millis();
-    }
+  if (millis() - lastBatteryCheckTime >= batteryCheckInterval)
+  {
+    readBatteryData(batteryData, fuelGauge);
+    upBatteryBLE(batteryData, bleGamepad);
+    lastBatteryCheckTime = millis();
+  }
 
-    if (millis() - lastBatteryCheckTime >= batteryCheckInterval)
-    {
-        readBatteryData(batteryData, fuelGauge);
-        upBatteryBLE(batteryData, bleGamepad);
-        lastBatteryCheckTime = millis();
-    }
+  if (millis() - lastOverallStatusUpdateTime >= overallStatusUpdateInterval)
+  {
+     updateOverallStatus(bleGamepad, overallStatusDataUnion, imu1Status, imu2Status,fugelGaugeStatus );
+     lastOverallStatusUpdateTime = millis();
+  }
 
-    // BLE Configuration handling
-    if (bleGamepad.isOnWriteConfig == 1 )
-    {
-        onwriteJoystic(configDataCheckUnion, bleGamepad);
-        bleGamepad.isOnWriteConfig = 0;
+  
+  if (bleGamepad.isOnWriteConfig == 1)
+  {
+    onwriteJoystic(configDataCheckUnion, bleGamepad);
+  //  bleGamepad.isOnWriteConfig = 0;
+  }
+/*
+  if(bleGamepad.isConnected()) {
+    bleGamepad.setterCharacterData(bleGamepad.OverallStatus, overallStatusDataUnion.rawData, sizeof(overallStatusDataUnion.rawData));
+  }
+  */
 
-    }
 
-//    handleBLEConfig(configDataCheckUnion, bleGamepad, configData);
-
-onWriteconfig(configDataCheckUnion, bleGamepad, configData);
+      onWriteconfig(configDataCheckUnion, bleGamepad, configData);
+   
 
   // processSwithChange();
 }
@@ -175,46 +192,15 @@ uint16_t CRC16(uint16_t crc, uint8_t a)
   return crc;
 }
 
-bool restoreSettings(EEPROMDataCheckUnion &configData)
-{
-  uint8_t buffer[EEPROM_TOTAL_SIZE];
-
-  uint16_t crc = 0xFFFF;
-
-  for (size_t i = 0; i < sizeof(buffer); i++)
-  {
-    buffer[i] = EEPROM.read(SETTING_ADDR + i);
-    crc = CRC16(crc, buffer[i]);
-  }
-
-  if (crc != 0 || buffer[0] != BYTE_CHECK1 || buffer[1] != BYTE_CHECK2)
-  {
-    return false;
-  }
-  memcpy(configData.rawData, buffer, sizeof(configData.rawData));
-
-  if (configData.EEPROMDataCheck.JoystickFlexSensorRate < 100 ||
-      configData.EEPROMDataCheck.JoystickFlexSensorRate > 99999)
-  {
-    return false;
-  }
-
-  return true;
-}
-
-/*
-@brief Save settings to EEPROM
- * This function saves the provided configData into EEPROM.
- * It first writes a magic number to identify the settings, then copies the raw data.
- * Finally, it calculates and appends a CRC16 checksum for data integrity.
- * @param configData Reference to the IMU_config_data_anJoystick_Union structure containing settings to save
-*/
 void saveSetting(EEPROMDataCheckUnion &configData)
 {
 
+
+
+  configData.EEPROMDataCheck.checksum1 = BYTE_CHECK1;
+  configData.EEPROMDataCheck.checksum2 = BYTE_CHECK2;
+
   uint8_t buffer[EEPROM_TOTAL_SIZE];
-  buffer[0] = BYTE_CHECK1;
-  buffer[1] = BYTE_CHECK2;
 
   memcpy(buffer, configData.rawData, EEPROM_TOTAL_SIZE - 2);
 
@@ -225,13 +211,54 @@ void saveSetting(EEPROMDataCheckUnion &configData)
   }
 
   buffer[EEPROM_TOTAL_SIZE - 2] = crc & 0xFF;
-  buffer[EEPROM_TOTAL_SIZE - 1] = crc >> 8;
+  buffer[EEPROM_TOTAL_SIZE - 1] = (crc >> 8) & 0xFF;
+
+  configData.EEPROMDataCheck.crc = crc;
 
   for (uint16_t i = 0; i < EEPROM_TOTAL_SIZE; i++)
   {
     EEPROM.write(SETTING_ADDR + i, buffer[i]);
   }
   EEPROM.commit();
+}
+
+bool restoreSettings(EEPROMDataCheckUnion &configData)
+{
+
+  uint8_t buffer[EEPROM_TOTAL_SIZE];
+
+  for (size_t i = 0; i < EEPROM_TOTAL_SIZE; i++)
+  {
+    buffer[i] = EEPROM.read(SETTING_ADDR + i);
+  }
+
+  if (buffer[0] != BYTE_CHECK1 || buffer[1] != BYTE_CHECK2)
+  {
+    Serial.println("Invalid magic bytes");
+    return false;
+  }
+
+  uint16_t calculatedCrc = 0xFFFF;
+  for (size_t i = 0; i < EEPROM_TOTAL_SIZE - 2; i++)
+  {
+    calculatedCrc = CRC16(calculatedCrc, buffer[i]);
+  }
+
+  uint16_t storedCrc = (buffer[EEPROM_TOTAL_SIZE - 1] << 8) | buffer[EEPROM_TOTAL_SIZE - 2];
+
+  if (calculatedCrc != storedCrc)
+  {
+    return false;
+  }
+
+  memcpy(configData.rawData, buffer, EEPROM_TOTAL_SIZE);
+
+  if (configData.EEPROMDataCheck.JoystickFlexSensorRate < 100 ||
+      configData.EEPROMDataCheck.JoystickFlexSensorRate > 99999)
+  {
+    return false;
+  }
+  return true;
 }
 
 /*
@@ -301,6 +328,8 @@ void updateOverallStatusData(OverallStatusDataUnion &overallStatusData)
   overallStatusData.overallStatusData.Imu1Status = imu1Status ? statusCodeSensor::RUNNING : statusCodeSensor::FAILED;
   overallStatusData.overallStatusData.Imu2Status = imu2Status ? statusCodeSensor::RUNNING : statusCodeSensor::FAILED;
 }
+
+
 
 /*
 @brief Setup interrupts for IMU1 and IMU2

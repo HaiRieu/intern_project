@@ -1468,16 +1468,21 @@ class CustomCharacteristicCallbacks: public NimBLECharacteristicCallbacks {
     BleGamepad *bleGamepad; // Pointer to BleGamepad instance
     public:
     //constructor
-    CustomCharacteristicCallbacks(BleGamepad* instance): bleGamepad(instance){}
+    CustomCharacteristicCallbacks(BleGamepad* instance): bleGamepad(instance){
+    }
+
     void onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) {
-        std::string value = pCharacteristic->getValue();
         Serial.println("onWrite callback triggered");
+        NimBLEAttValue value = pCharacteristic->getValue();
+        Serial.println("getValue() not error");
         if ((pCharacteristic->getUUID().toString() == SENSORS_CONFIG_UUID))
         {
             Serial.println("onWrite callback for sensor config");
             bleGamepad->isOnWriteConfig = 1;
+           // Serial.println(bleGamepad->isOnWriteConfig);
             if (value.length() == 15)
-            {
+            {  
+              //  Serial.println(value.length());
                 bleGamepad->isRightSize = 1;
             }
             else 
@@ -1698,6 +1703,7 @@ void BleGamepad::taskServer(void *pvParameter)
         NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY
     );
     BleGamepadInstance->ForceSensorData = ForceSensorData;
+
     NimBLECharacteristic *OverallStatus = sensorService->createCharacteristic(
         SENSORS_OVERALL_STATUS_UUID,
         NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY
@@ -1708,6 +1714,8 @@ void BleGamepad::taskServer(void *pvParameter)
         NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY | NIMBLE_PROPERTY::WRITE
     );
     BleGamepadInstance->Config = Config;
+
+
     NimBLECharacteristic *UNIXTime = sensorService->createCharacteristic(
         SENSORS_UNIX_TIME_UUID,
         NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY

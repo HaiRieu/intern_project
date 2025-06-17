@@ -56,6 +56,7 @@ void cycleRGBOnce();
 void processMotor();
 
 void updateOverallStatusData(OverallStatusDataUnion &overallStatusDatapPacked);
+void updateOverallStatus(BleGamepad &bleGamepad, OverallStatusDataUnion &overallStatusData, bool &imu1Status, bool &imu2Status, bool &fuelGauge);
 
 void readDataIMU(Adafruit_LSM6DS3TRC &lsm6ds,
                  Adafruit_LIS3MDL &lis3mdl,

@@ -80,7 +80,7 @@ enum BatteryChargeStatus
   BATTERY_CHARGE_STATUS_FULLY_CHARGED = 2
 };
 
-enum statusCodeSensor
+enum statusCodeSensor : uint8_t
 {
   NOT_DETECT = 0,
   FAILED = 1,
@@ -89,7 +89,7 @@ enum statusCodeSensor
 
 };
 
-enum statusCode
+enum statusCode : uint8_t
 {
   NO_ERROR = 0,
   GENERAL_ERROR = 1

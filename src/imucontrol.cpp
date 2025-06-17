@@ -60,7 +60,7 @@ bool imuStart(Adafruit_LSM6DS3TRC &lsm6ds,
     return imuStatusLsm6ds && imuStatusLis3mdl;
 }
 
-void setupIMUDataRate(Adafruit_LSM6DS3TRC &lsm6ds, Adafruit_LIS3MDL &lis3mdl , lsm6ds_data_rate_t )
+void setupIMUDataRate(Adafruit_LSM6DS3TRC &lsm6ds, Adafruit_LIS3MDL &lis3mdl  )
 {
 
     lsm6ds.setAccelDataRate(LSM6DS_RATE_52_HZ);
@@ -161,7 +161,7 @@ void readDataIMU(Adafruit_LSM6DS3TRC &lsm6ds,
             cal.calibrate(gyro);
             cal.calibrate(mag);
             cal.saveCalibration();
-            bleGamepad.isOnWriteConfig = 0;
+        //    bleGamepad.isOnWriteConfig = 0;
   //      }
 
          if ((millis() - timestamp) < (1000 / FILTER_UPDATE_RATE_HZ) )

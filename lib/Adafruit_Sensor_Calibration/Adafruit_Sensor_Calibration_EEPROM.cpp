@@ -19,7 +19,7 @@ bool Adafruit_Sensor_Calibration_EEPROM::begin(uint8_t eeprom_addr) {
 }
 
 bool Adafruit_Sensor_Calibration_EEPROM::saveCalibration(void) {
-  Serial.println("Save Cal");
+  //Serial.println("Save Cal");
 
   uint8_t buf[EEPROM_CAL_SIZE];
   memset(buf, 0, EEPROM_CAL_SIZE);
@@ -46,8 +46,8 @@ bool Adafruit_Sensor_Calibration_EEPROM::saveCalibration(void) {
   for (uint16_t i = 0; i < EEPROM_CAL_SIZE - 2; i++) {
     crc = crc16_update(crc, buf[i]);
   }
-  Serial.print("CRC: ");
-  Serial.println(crc, HEX);
+  //Serial.print("CRC: ");
+  //Serial.println(crc, HEX);
   buf[EEPROM_CAL_SIZE - 2] = crc & 0xFF;
   buf[EEPROM_CAL_SIZE - 1] = crc >> 8;
 
