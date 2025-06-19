@@ -61,7 +61,6 @@ void configureIMUAccelGyroRate(EEPROMDataCheckUnion &configData, uint8_t rateVal
 
     case 2:
         value = LSM6DS_RATE_26_HZ;
-        //   Serial.println("Setting IMU rate to 26 Hz");
         break;
 
     case 3:
@@ -87,16 +86,10 @@ void configureIMUAccelGyroRate(EEPROMDataCheckUnion &configData, uint8_t rateVal
 
     if (idIMU == 1)
     {
-        Serial.println(value);
-        Serial.print("Setting IMU rate");
-        Serial.println(idIMU);
         configData.EEPROMDataCheck.IMU1AccelYyroRateHz = value;
     }
     else if (idIMU == 2)
     {
-        Serial.println(value);
-        Serial.print("Setting IMU rate");
-        Serial.println(idIMU);
         configData.EEPROMDataCheck.IMU2AccelGyroFreqHz = value;
     }
 }
@@ -144,12 +137,12 @@ void configureImuMagFreqHz(EEPROMDataCheckUnion &configData, uint8_t rateValue, 
 
     if (idIMU == 1)
     {
-        Serial.println(value);
+
         configData.EEPROMDataCheck.IMU1MagFreqHz = value;
     }
     else if (idIMU == 2)
     {
-        Serial.println(value);
+
         configData.EEPROMDataCheck.IMU2MagFreqHz = value;
     }
 }
@@ -181,12 +174,10 @@ void configureIMUMagRange(EEPROMDataCheckUnion &configData, uint8_t rangeValue, 
 
     if (idIMU == 1)
     {
-        //  Serial.println(value);
         configData.EEPROMDataCheck.IMU1MagRangeGaus = value;
     }
     else if (idIMU == 2)
     {
-        //  Serial.println(value);
         configData.EEPROMDataCheck.IMU2MagRangeGauss = value;
     }
 }
@@ -194,6 +185,7 @@ void configureIMUMagRange(EEPROMDataCheckUnion &configData, uint8_t rangeValue, 
 void configureIMUAccelRange(EEPROMDataCheckUnion &configData, uint8_t rangeValue, uint8_t idIMU)
 {
     uint8_t value;
+
     switch (rangeValue)
     {
     case 0:
@@ -218,12 +210,12 @@ void configureIMUAccelRange(EEPROMDataCheckUnion &configData, uint8_t rangeValue
 
     if (idIMU == 1)
     {
-        //  Serial.println(value);
+
         configData.EEPROMDataCheck.IMU1AccelRangeG = value;
     }
     else if (idIMU == 2)
     {
-        //  Serial.println(value);
+
         configData.EEPROMDataCheck.IMU2AccelRangeG = value;
     }
 }
@@ -259,12 +251,12 @@ void configureIMUGyroRange(EEPROMDataCheckUnion &configData, uint8_t rangeValue,
 
     if (idIMU == 1)
     {
-        //  Serial.println(value);
+
         configData.EEPROMDataCheck.IMU1GyroRangeDps = value;
     }
     else if (idIMU == 2)
     {
-        //  Serial.println(value);
+
         configData.EEPROMDataCheck.IMU2GyroRangeDps = value;
     }
 }
@@ -357,13 +349,13 @@ uint8_t convertImuAccelRangeG(uint8_t range)
     case LSM6DS_ACCEL_RANGE_2_G:
         return 0;
     case LSM6DS_ACCEL_RANGE_4_G:
-        return 1;
-
-    case LSM6DS_ACCEL_RANGE_8_G:
         return 2;
 
-    case LSM6DS_ACCEL_RANGE_16_G:
+    case LSM6DS_ACCEL_RANGE_8_G:
         return 3;
+
+    case LSM6DS_ACCEL_RANGE_16_G:
+        return 1;
 
     default:
         return 0;
@@ -404,45 +396,48 @@ bool loadconfigEEProm(EEPROMDataCheckUnion &configData)
 }
 
 /*
-@brief Function to handle writing configuration data for IMU and joystick settings to the BLE Gamepad.
+@brief Function to handle writing configuration data to EEPROM and updating IMU settings.
 @param configData Reference to the EEPROMDataCheckUnion containing configuration data
-@param imuJoystickUnion Reference to the ImuJoystickUnion containing IMU and joystick configuration data
 @param bleGamepad Reference to the BleGamepad object
-This function retrieves the configuration data from the BLE Gamepad, updates the IMU and
- joystick settings based on the provided configuration, and saves the updated settings to EEPROM.
+@param imuJoystickUnion Reference to the ImuJoystickUnion containing IMU and joystick configuration data
+@param lsm6ds1 Reference to the first Adafruit_LSM6DS3TRC IMU object
+@param lis3mdl1 Reference to the first Adafruit_LIS3MDL IMU object
+@param lsm6ds2 Reference to the second Adafruit_LSM6DS3TRC IMU object
+@param lis3mdl2 Reference to the second Adafruit_LIS3MDL IMU object
+This function checks if the BLE Gamepad is connected and if it is in read or write configuration mode. If in read mode, it loads the configuration from EEPROM and updates the IMU settings accordingly. If in write mode, it retrieves the configuration data from the BLE Gamepad, updates the EEPROM data, and saves it to EEPROM.
 */
-
-bool onWriteconfig(EEPROMDataCheckUnion &configData, BleGamepad &bleGamepad, ImuJoystickUnion &imuJoystickUnion)
+bool onWriteconfig(EEPROMDataCheckUnion &configData, 
+                   BleGamepad &bleGamepad, 
+                   ImuJoystickUnion &imuJoystickUnion,
+                   Adafruit_LSM6DS3TRC &lsm6ds1,
+                   Adafruit_LIS3MDL &lis3mdl1,
+                   Adafruit_LSM6DS3TRC &lsm6ds2,
+                   Adafruit_LIS3MDL &lis3mdl2)
 {
-    if (!bleGamepad.isConnected()) return false;
+    if (!bleGamepad.isConnected())
+        return false;
 
-   
     if (bleGamepad.isOnReadConfig == 1)
     {
-        bleGamepad.isOnReadConfig = 0; 
+        bleGamepad.isOnReadConfig = 0;
         loadconfigEEProm(configData);
-        
-            imuJoystickUnion.configDataImuJOTISK.IMU1AccelYyroRateHz = convertImuAccelGyroRate(configData.EEPROMDataCheck.IMU1AccelYyroRateHz);
-            imuJoystickUnion.configDataImuJOTISK.IMU1MagFreqHz = convertImuMagRate(configData.EEPROMDataCheck.IMU1MagFreqHz);
-            imuJoystickUnion.configDataImuJOTISK.IMU1AccelRangeG = convertImuAccelRangeG(configData.EEPROMDataCheck.IMU1AccelRangeG);
-            imuJoystickUnion.configDataImuJOTISK.IMU1MagRangeGaus = convertImuMagRangeGaus(configData.EEPROMDataCheck.IMU1MagRangeGaus);
-            imuJoystickUnion.configDataImuJOTISK.IMU1GyroRangeDps = convertImuGyroRangeDps(configData.EEPROMDataCheck.IMU1GyroRangeDps);
 
-            imuJoystickUnion.configDataImuJOTISK.IMU2AccelGyroFreqHz = convertImuAccelGyroRate(configData.EEPROMDataCheck.IMU2AccelGyroFreqHz);
-            imuJoystickUnion.configDataImuJOTISK.IMU2MagFreqHz = convertImuMagRate(configData.EEPROMDataCheck.IMU2MagFreqHz);
-            imuJoystickUnion.configDataImuJOTISK.IMU2AccelRangeG = convertImuAccelRangeG(configData.EEPROMDataCheck.IMU2AccelRangeG);
-            imuJoystickUnion.configDataImuJOTISK.IMU2MagRangeGauss = convertImuMagRangeGaus(configData.EEPROMDataCheck.IMU2MagRangeGauss);
-            imuJoystickUnion.configDataImuJOTISK.IMU2GyroRangeDps = convertImuGyroRangeDps(configData.EEPROMDataCheck.IMU2GyroRangeDps);
+        imuJoystickUnion.configDataImuJOTISK.IMU1AccelYyroRateHz = convertImuAccelGyroRate(configData.EEPROMDataCheck.IMU1AccelYyroRateHz);
+        imuJoystickUnion.configDataImuJOTISK.IMU1MagFreqHz = convertImuMagRate(configData.EEPROMDataCheck.IMU1MagFreqHz);
+        imuJoystickUnion.configDataImuJOTISK.IMU1AccelRangeG = convertImuAccelRangeG(configData.EEPROMDataCheck.IMU1AccelRangeG);
+        imuJoystickUnion.configDataImuJOTISK.IMU1MagRangeGaus = convertImuMagRangeGaus(configData.EEPROMDataCheck.IMU1MagRangeGaus);
+        imuJoystickUnion.configDataImuJOTISK.IMU1GyroRangeDps = convertImuGyroRangeDps(configData.EEPROMDataCheck.IMU1GyroRangeDps);
 
-            imuJoystickUnion.configDataImuJOTISK.JoystickFlexSensorRate = configData.EEPROMDataCheck.JoystickFlexSensorRate;
-            bleGamepad.setterCharacterData(bleGamepad.Config, imuJoystickUnion.rawData, sizeof(imuJoystickUnion.rawData));
-          //  return true;
-        }
-    
-    //Serial.print("isOnWriteConfig: ");
-    // Serial.println(bleGamepad.isOnWriteConfig);
-     //Serial.println(bleGamepad.isRightSize);
+        imuJoystickUnion.configDataImuJOTISK.IMU2AccelGyroFreqHz = convertImuAccelGyroRate(configData.EEPROMDataCheck.IMU2AccelGyroFreqHz);
+        imuJoystickUnion.configDataImuJOTISK.IMU2MagFreqHz = convertImuMagRate(configData.EEPROMDataCheck.IMU2MagFreqHz);
+        imuJoystickUnion.configDataImuJOTISK.IMU2AccelRangeG = convertImuAccelRangeG(configData.EEPROMDataCheck.IMU2AccelRangeG);
+        imuJoystickUnion.configDataImuJOTISK.IMU2MagRangeGauss = convertImuMagRangeGaus(configData.EEPROMDataCheck.IMU2MagRangeGauss);
+        imuJoystickUnion.configDataImuJOTISK.IMU2GyroRangeDps = convertImuGyroRangeDps(configData.EEPROMDataCheck.IMU2GyroRangeDps);
+        imuJoystickUnion.configDataImuJOTISK.JoystickFlexSensorRate = configData.EEPROMDataCheck.JoystickFlexSensorRate;
+        imuJoystickUnion.configDataImuJOTISK.CMD =  configData.EEPROMDataCheck.CMD; 
 
+        bleGamepad.setterCharacterData(bleGamepad.Config, imuJoystickUnion.rawData, sizeof(imuJoystickUnion.rawData));
+    }
 
     if (bleGamepad.isOnWriteConfig == 1 && bleGamepad.isRightSize == 1)
     {
@@ -453,8 +448,7 @@ bool onWriteconfig(EEPROMDataCheckUnion &configData, BleGamepad &bleGamepad, Imu
 
         bleGamepad.getcharacterData(bleGamepad.Config, imuJoystickUnion.rawData);
 
-        
-        configureIMUAccelGyroRate(configData, imuJoystickUnion.configDataImuJOTISK.IMU1AccelYyroRateHz,1);
+        configureIMUAccelGyroRate(configData, imuJoystickUnion.configDataImuJOTISK.IMU1AccelYyroRateHz, 1);
         configureImuMagFreqHz(configData, imuJoystickUnion.configDataImuJOTISK.IMU1MagFreqHz, 1);
         configureIMUAccelRange(configData, imuJoystickUnion.configDataImuJOTISK.IMU1AccelRangeG, 1);
         configureIMUMagRange(configData, imuJoystickUnion.configDataImuJOTISK.IMU1MagRangeGaus, 1);
@@ -466,43 +460,17 @@ bool onWriteconfig(EEPROMDataCheckUnion &configData, BleGamepad &bleGamepad, Imu
         configureIMUMagRange(configData, imuJoystickUnion.configDataImuJOTISK.IMU2MagRangeGauss, 2);
         configureIMUGyroRange(configData, imuJoystickUnion.configDataImuJOTISK.IMU2GyroRangeDps, 2);
 
-    
+        configData.EEPROMDataCheck.CMD = imuJoystickUnion.configDataImuJOTISK.CMD;
+        configData.EEPROMDataCheck.JoystickFlexSensorRate = imuJoystickUnion.configDataImuJOTISK.JoystickFlexSensorRate;
+
+        setupIMUDataRateConfig(lsm6ds1, lis3mdl1, configData, 1);
+        setupIMUDataRateConfig(lsm6ds2, lis3mdl2, configData, 2);
+
         saveSetting(configData);
         return true;
     }
 
     return false;
-}
-
-void handleBLEConfig(EEPROMDataCheckUnion &configData, BleGamepad &bleGamepad, ImuJoystickUnion &imuJoystickUnion)
-{
-    Serial.print("is onWriteConfig: ");
-    Serial.println(bleGamepad.isOnWriteConfig);
-
-    Serial.print("is onReadConfig: ");
-    Serial.println(bleGamepad.isOnReadConfig);
-
-    if (bleGamepad.isOnWriteConfig == 1)
-    {
-
-        onWriteconfig(configData, bleGamepad, imuJoystickUnion);
-        Serial.println("Processing Write Config...");
-        return;
-    }
-
-    if (bleGamepad.isOnReadConfig == 1)
-    {
-        if (millis() - lastWriteTime > 1000)
-        {
-            Serial.println("Processing Read Config...");
-            bleGamepad.isOnReadConfig = 0;
-        }
-        else
-        {
-            Serial.println("Read ignored - recent write detected");
-            bleGamepad.isOnReadConfig = 0;
-        }
-    }
 }
 
 /*
@@ -524,11 +492,13 @@ void sendDataBLE(BleGamepad &bleGamepad,
         {
             bleGamepad.setterCharacterData(bleGamepad.IMU1RawData, imuData.rawData, sizeof(imuData.rawData));
             bleGamepad.setterCharacterData(bleGamepad.IMU1FuseDataCaliStatus, IMUeurle.rawData, sizeof(IMUeurle.rawData));
+      
         }
         else
         {
             bleGamepad.setterCharacterData(bleGamepad.IMU2RawData, imuData.rawData, sizeof(imuData.rawData));
             bleGamepad.setterCharacterData(bleGamepad.IMU2FuseDataCaliStatus, IMUeurle.rawData, sizeof(IMUeurle.rawData));
+         
         }
     }
     else
@@ -539,21 +509,13 @@ void sendDataBLE(BleGamepad &bleGamepad,
 
 void updateOverallStatus(BleGamepad &bleGamepad, OverallStatusDataUnion &overallStatusData, bool &imu1Status, bool &imu2Status, bool &fuelGauge)
 {
-    // Serial.println("Updating overall status...");
+
     if (bleGamepad.isConnected())
     {
-        // Serial.println("BLE Gamepad is connected, updating overall status data.");
         overallStatusData.overallStatusData.statusode = statusCode::NO_ERROR;
-        // Serial.println(overallStatusData.overallStatusData.statusode);
         overallStatusData.overallStatusData.FuelgauseStatus = fuelGauge ? statusCodeSensor::RUNNING : statusCodeSensor::FAILED;
-        //   Serial.print("Fuel Gauge Status: ");
-        //    Serial.println(overallStatusData.overallStatusData.FuelgauseStatus);
         overallStatusData.overallStatusData.Imu1Status = imu1Status ? statusCodeSensor::RUNNING : statusCodeSensor::FAILED;
-        //    Serial.print("IMU1 Status: ");
-        //    Serial.println(overallStatusData.overallStatusData.Imu1Status);
         overallStatusData.overallStatusData.Imu2Status = imu2Status ? statusCodeSensor::RUNNING : statusCodeSensor::FAILED;
-        //    Serial.print("IMU2 Status: ");
-        //    Serial.println(overallStatusData.overallStatusData.Imu2Status);
         bleGamepad.setterCharacterData(bleGamepad.OverallStatus, overallStatusData.rawData, sizeof(overallStatusData.rawData));
     }
 }

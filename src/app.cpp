@@ -16,6 +16,9 @@ bool fugelGaugeStatus = false;
 bool imu1Status = false;
 bool imu2Status = false;
 
+volatile bool senBLEImu1 = true;
+volatile bool senBLEImu2 = false;
+
 uint32_t timestamp1 = 0;
 uint32_t timestamp2 = 0;
 
@@ -48,7 +51,6 @@ unsigned long overallStatusUpdateInterval = 100;
 unsigned long lastOnwrite = 0;
 unsigned long onwriteInterval = 200;
 
-
 void appsetup()
 {
 
@@ -69,11 +71,11 @@ void appsetup()
 
   imu1Status = initIMU(lsm6ds1, lis3mdl1, ADDRESS_LSM6DS1, ADDRESS_LIS3MDL1,
                        overallStatusDataUnion, fusion1, calibrationImu1, IMU1_CAL_EEPROM_ADDR,
-                       imuEulerCalibration1, IMU1_INT_PIN, IMU1ID, timestamp1);
+                       imuEulerCalibration1, IMU1_INT_PIN, IMU1ID, timestamp1, configDataCheckUnion);
 
   imu2Status = initIMU(lsm6ds2, lis3mdl2, ADDRESS_LSM6DS2, ADDRESS_LIS3MDL2,
                        overallStatusDataUnion, fusion2, calibrationImu2, IMU2_CAL_EEPROM_ADDR,
-                       imuEulerCalibration2, IMU2_INT_PIN, IMU2ID, timestamp2);
+                       imuEulerCalibration2, IMU2_INT_PIN, IMU2ID, timestamp2, configDataCheckUnion);
 
   setupBLEGamepad(bleGamepad, bleGamepadConfig);
 
@@ -92,7 +94,7 @@ void appprocess()
     {
       readDataIMU(lsm6ds1, lis3mdl1, calibrationImu1, fusion1,
                   imuDataRawUnion1, imuEulerCalibration1, bleGamepad, imu1Status, timestamp1);
-      sendDataBLE(bleGamepad, imuDataRawUnion1, imuEulerCalibration1, true);
+      sendDataBLE(bleGamepad, imuDataRawUnion1, imuEulerCalibration1, senBLEImu1);
     }
     imuDataIMUReady1 = false;
   }
@@ -100,7 +102,7 @@ void appprocess()
   {
     readDataIMU(lsm6ds1, lis3mdl1, calibrationImu1, fusion1,
                 imuDataRawUnion1, imuEulerCalibration1, bleGamepad, imu1Status, timestamp1);
-    sendDataBLE(bleGamepad, imuDataRawUnion1, imuEulerCalibration1, true);
+    sendDataBLE(bleGamepad, imuDataRawUnion1, imuEulerCalibration1, senBLEImu1);
   }
 
   if (imuDataIMUReady2)
@@ -109,7 +111,7 @@ void appprocess()
     {
       readDataIMU(lsm6ds2, lis3mdl2, calibrationImu2, fusion2,
                   imuDataRawUnion2, imuEulerCalibration2, bleGamepad, imu2Status, timestamp2);
-      sendDataBLE(bleGamepad, imuDataRawUnion2, imuEulerCalibration2, false);
+      sendDataBLE(bleGamepad, imuDataRawUnion2, imuEulerCalibration2, senBLEImu2);
     }
     imuDataIMUReady2 = false;
   }
@@ -117,10 +119,10 @@ void appprocess()
   {
     readDataIMU(lsm6ds2, lis3mdl2, calibrationImu2, fusion2,
                 imuDataRawUnion2, imuEulerCalibration2, bleGamepad, imu2Status, timestamp2);
-    sendDataBLE(bleGamepad, imuDataRawUnion2, imuEulerCalibration2, false);
+    sendDataBLE(bleGamepad, imuDataRawUnion2, imuEulerCalibration2, senBLEImu2);
   }
 
-  if (millis() - lastFlexSensorReadTime >= readFlexSensorInterval)
+  if (millis() - lastFlexSensorReadTime >= configDataCheckUnion.EEPROMDataCheck.JoystickFlexSensorRate)
   {
     readFlexSensor(flexSensorDataUnion, bleGamepad);
     readForceSensor(forceSensorData, bleGamepad);
@@ -128,7 +130,7 @@ void appprocess()
     lastFlexSensorReadTime = millis();
   }
 
-  if (millis() - lastJoysticReadTime >= JoystickReadInterval)
+  if (millis() - lastJoysticReadTime >= configDataCheckUnion.EEPROMDataCheck.JoystickFlexSensorRate)
   {
     readJoystick(joystickDataUnion);
     updateJoystickBle(bleGamepad, joystickDataUnion);
@@ -144,27 +146,15 @@ void appprocess()
 
   if (millis() - lastOverallStatusUpdateTime >= overallStatusUpdateInterval)
   {
-     updateOverallStatus(bleGamepad, overallStatusDataUnion, imu1Status, imu2Status,fugelGaugeStatus );
-     lastOverallStatusUpdateTime = millis();
+    updateOverallStatus(bleGamepad, overallStatusDataUnion, imu1Status, imu2Status, fugelGaugeStatus);
+    lastOverallStatusUpdateTime = millis();
   }
 
-  
-  if (bleGamepad.isOnWriteConfig == 1)
-  {
-    onwriteJoystic(configDataCheckUnion, bleGamepad);
-  //  bleGamepad.isOnWriteConfig = 0;
-  }
-/*
-  if(bleGamepad.isConnected()) {
-    bleGamepad.setterCharacterData(bleGamepad.OverallStatus, overallStatusDataUnion.rawData, sizeof(overallStatusDataUnion.rawData));
-  }
-  */
+  onWriteconfig(configDataCheckUnion, bleGamepad, configData, lsm6ds1, lis3mdl1, lsm6ds2, lis3mdl2);
 
-
-      onWriteconfig(configDataCheckUnion, bleGamepad, configData);
-   
-
-  // processSwithChange();
+  bleCalibration(configData, bleGamepad, imuDataRawUnion1, imuDataRawUnion2, calibrationImu1, calibrationImu2,
+                 imuEulerCalibration1, imuEulerCalibration2);
+   processSwithChange();
 }
 /*
 @brief Calculate CRC16 checksum
@@ -192,10 +182,14 @@ uint16_t CRC16(uint16_t crc, uint8_t a)
   return crc;
 }
 
+/*
+@brief Save settings to EEPROM
+ * This function saves the configuration data to EEPROM.
+ * It includes a checksum and CRC16 for data integrity.
+ * @param configData Reference to the EEPROMDataCheckUnion structure containing configuration data
+*/
 void saveSetting(EEPROMDataCheckUnion &configData)
 {
-
-
 
   configData.EEPROMDataCheck.checksum1 = BYTE_CHECK1;
   configData.EEPROMDataCheck.checksum2 = BYTE_CHECK2;
@@ -222,6 +216,13 @@ void saveSetting(EEPROMDataCheckUnion &configData)
   EEPROM.commit();
 }
 
+/*
+@brief Restore settings from EEPROM
+ * This function reads the configuration data from EEPROM and verifies its integrity.
+ * It checks the magic bytes and CRC16 checksum to ensure the data is valid.
+ * @param configData Reference to the EEPROMDataCheckUnion structure to store restored configuration data
+ * @return true if settings are successfully restored, false otherwise
+*/
 bool restoreSettings(EEPROMDataCheckUnion &configData)
 {
 
@@ -329,8 +330,6 @@ void updateOverallStatusData(OverallStatusDataUnion &overallStatusData)
   overallStatusData.overallStatusData.Imu2Status = imu2Status ? statusCodeSensor::RUNNING : statusCodeSensor::FAILED;
 }
 
-
-
 /*
 @brief Setup interrupts for IMU1 and IMU2
 
@@ -371,4 +370,42 @@ void IRAM_ATTR imuInterruptHandlerImu1()
 void IRAM_ATTR imuInterruptHandlerImu2()
 {
   imuDataIMUReady2 = true;
+}
+
+void bleCalibration(ImuJoystickUnion &imuJoystickUnion, BleGamepad &bleGamepad,
+                    IMUDataRawUnion &imu1Data, IMUDataRawUnion &imu2Data,
+                    Adafruit_Sensor_Calibration_EEPROM &cal1, Adafruit_Sensor_Calibration_EEPROM &cal2,
+                    IMUEulernUnion &imuEuler1, IMUEulernUnion &imuEuler2)
+{
+  if (bleGamepad.isConnected())
+  {
+    if (bleGamepad.isCalitool == 1)
+    {
+      //  bleGamepad.isCalitool = 0;
+      bleGamepad.getcharacterData(bleGamepad.Config, imuJoystickUnion.rawData);
+      Serial.println(imuJoystickUnion.configDataImuJOTISK.CMD);
+      if (imuJoystickUnion.configDataImuJOTISK.CMD == 2)
+      {
+        Serial.println(" Starting calibration for IMU1...");
+        serialMonitor(imu1Data);
+        receiveCalibration(cal1);
+        senBLEImu1 = false;
+      }
+      else if (imuJoystickUnion.configDataImuJOTISK.CMD == 3)
+      {
+
+        Serial.println(" Starting calibration for IMU2...");
+        serialMonitor(imu2Data);
+        receiveCalibration(cal2);
+        senBLEImu2 = true;
+      }
+      else if (imuJoystickUnion.configDataImuJOTISK.CMD == 1)
+      {
+        senBLEImu1 = true;
+        senBLEImu2 = false;
+
+        bleGamepad.isCalitool = 0;
+      }
+    }
+  }
 }

@@ -13,11 +13,12 @@
 #include <Adafruit_AHRS_NXPFusion.h>
 #include <Adafruit_Sensor_Calibration.h>
 
-// Define constants for the application
+
 #define FIRMWARE_VERSION "00.00.01"
 #define MODEL_NUMBER "DegapVrGlove"
 #define MANUFACTURER "NUS/Seamless"
 #define HARDWARE_REVISION "00.00.01"
+#define DEGREES_PER_RADIAN (180.0 / 3.141592653589793238463)
 #define ADDRESS_LSM6DS1 0x6A
 #define ADDRESS_LSM6DS2 0x6B
 #define ADDRESS_LIS3MDL1 0x1E
@@ -65,7 +66,7 @@
 #define SHORT_PRESS_TIME 50 
 
 
-enum CMDStatusCode
+enum CMDStatusCode : uint8_t
 {
   IDLE = 0,
   RUN = 1,
@@ -99,6 +100,7 @@ typedef struct __attribute__((packed))
 {
   uint8_t checksum1;
   uint8_t checksum2;
+  CMDStatusCode CMD;
   uint8_t IMU1AccelYyroRateHz;
   uint8_t IMU1MagFreqHz;
   uint8_t IMU2AccelGyroFreqHz;
@@ -116,7 +118,7 @@ typedef struct __attribute__((packed))
 typedef union __attribute__((packed))
 {
   IMUAndJoystickCheck EEPROMDataCheck;
-  uint8_t rawData[16];
+  uint8_t rawData[17];
 } EEPROMDataCheckUnion;
 
 /*
@@ -124,7 +126,7 @@ brief Structure to hold configuration data for IMU and Joystick
 */
 typedef struct __attribute__((packed))
 {
-  uint8_t CMD;
+  CMDStatusCode CMD;
   uint8_t IMU1AccelYyroRateHz;
   uint8_t IMU1MagFreqHz;
   uint8_t IMU2AccelGyroFreqHz;

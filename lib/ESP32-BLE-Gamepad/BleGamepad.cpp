@@ -1479,6 +1479,8 @@ class CustomCharacteristicCallbacks: public NimBLECharacteristicCallbacks {
         {
             Serial.println("onWrite callback for sensor config");
             bleGamepad->isOnWriteConfig = 1;
+            bleGamepad->isCalibration = 1;
+            bleGamepad->isCalitool = 1;
            // Serial.println(bleGamepad->isOnWriteConfig);
             if (value.length() == 15)
             {  
@@ -1805,7 +1807,7 @@ void BleGamepad::taskServer(void *pvParameter)
     BleGamepadInstance->onStarted(pServer);
     //test change advertising function
     NimBLEAdvertising *pAdvertising = pServer->getAdvertising();
-    pAdvertising->setName("alohaaa");
+    pAdvertising->setName("BLE VR Glove");
     pAdvertising->setAppearance(HID_GAMEPAD);
     pAdvertising->addServiceUUID(BleGamepadInstance->hid->getHidService()->getUUID());
     pAdvertising->addServiceUUID(sensorService->getUUID());

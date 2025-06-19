@@ -46,7 +46,7 @@ bool initIMU(Adafruit_LSM6DS3TRC &lsm6ds,
                  Adafruit_Sensor_Calibration_EEPROM &cal,
                  uint8_t addressEEPROMImu,
                  IMUEulernUnion &imuEulerCalibration,
-                 uint8_t pinInterrup, uint8_t imuId, uint32_t &timestamp);
+                 uint8_t pinInterrup, uint8_t imuId, uint32_t &timestamp, EEPROMDataCheckUnion &eepromDataCheck);
 
 
 bool initFuelGauge(Adafruit_MAX17048 &fuelGauge, OverallStatusDataUnion &overallStatusDatapPacked);
@@ -98,14 +98,14 @@ void processSwithChange();
 void onwriteJoystic(EEPROMDataCheckUnion &joystickDataUnion, BleGamepad &bleGamepad);
 
 bool onWriteconfig(EEPROMDataCheckUnion &configData, BleGamepad &bleGamepad,
-                   ImuJoystickUnion &imuJoystickUnion);
+                   ImuJoystickUnion &imuJoystickUnion, Adafruit_LSM6DS3TRC &lsm6ds,
+                   Adafruit_LIS3MDL &lis3mdl, Adafruit_LSM6DS3TRC &lsm6ds2,
+                   Adafruit_LIS3MDL &lis3mdl2);
 
 void bleCalibration(ImuJoystickUnion &imuJoystickUnion,
-                    IMUEulernUnion &imu1EulernUnion,
-                    IMUEulernUnion &imu2EulernUnion,
                     BleGamepad &bleGamepad,
-                    Adafruit_Sensor_Calibration_EEPROM &cal1,
-                    Adafruit_Sensor_Calibration_EEPROM &cal2);
+                    IMUDataRawUnion &imu1Data , IMUDataRawUnion &imu2Data, 
+                    Adafruit_Sensor_Calibration_EEPROM &cal1, Adafruit_Sensor_Calibration_EEPROM &, IMUEulernUnion &imuEuler1, IMUEulernUnion &imuEuler2);
 
 void updateLed(int r, int g, int b, int times, int delayTime);
 
@@ -114,10 +114,16 @@ void sendDataBLE(BleGamepad &bleGamepad,
                  IMUEulernUnion &IMUeurle,
                  bool isIMU);
 
-void handleBLEConfig(EEPROMDataCheckUnion &configDataCheckUnion, BleGamepad &bleGamepad,
-                     ImuJoystickUnion &imuJoystickUnion);
+void setupIMUDataRateConfig(Adafruit_LSM6DS3TRC &lsm6ds, Adafruit_LIS3MDL &lis3mdl, EEPROMDataCheckUnion &configData, uint8_t idIMU);
+        
+bool loadconfigEEProm(EEPROMDataCheckUnion &configData);         
+
+void serialMonitor(IMUDataRawUnion &imuData);
+
+uint16_t CRC16(uint16_t crc, uint8_t a);
+
+void receiveCalibration(Adafruit_Sensor_Calibration_EEPROM &cal);
 
 
-bool loadconfigEEProm(EEPROMDataCheckUnion &configData);                     
 
 #endif

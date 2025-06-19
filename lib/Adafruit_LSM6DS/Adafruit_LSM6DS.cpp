@@ -324,8 +324,6 @@ void Adafruit_LSM6DS::setAccelDataRate(lsm6ds_data_rate_t data_rate) {
 
   Adafruit_BusIO_RegisterBits accel_data_rate =
       Adafruit_BusIO_RegisterBits(&ctrl1, 4, 4);
-  Serial.println("Set Accel Data Rate");
-  Serial.println(data_rate);
   accel_data_rate.write(data_rate);
 }
 
@@ -358,8 +356,6 @@ void Adafruit_LSM6DS::setAccelRange(lsm6ds_accel_range_t new_range) {
 
   Adafruit_BusIO_RegisterBits accel_range =
       Adafruit_BusIO_RegisterBits(&ctrl1, 2, 2);
-  Serial.println("Set Accel Range");
-  Serial.println(new_range);
   accel_range.write(new_range);
 
   accelRangeBuffered = new_range;

@@ -18,9 +18,9 @@ const int size = sizeof(FLEX_POINTS) / sizeof(FlexDataPoint);
 
 static joystickCali joyCali = {2048, 2048, 100, 4095, false};
 
-bool swithChange = false;
-bool swithChangePressed = false;
-unsigned long lastSwithChangeTime = 0;
+volatile bool swithChange = false;
+volatile bool swithChangePressed = false;
+volatile unsigned long lastSwithChangeTime = 0;
 
 /*
 brief Initialize the system by setting up pin modes and initial states.
@@ -219,6 +219,15 @@ void readJoystick(JoystickDataUnion &joystickDataUnion)
   joystickDataUnion.joystickData.joystickButton = digitalRead(JOYSTICK_BUTTON_PIN) == HIGH ? 1 : 0;
 }
 
+
+/*
+@brief Updates the joystick data in the BLE Gamepad.
+  * This function processes the joystick data, smooths the values, and sends the updated data to the BLE Gamepad.
+  * It uses a low-pass filter to smooth the joystick values and updates the BLE Gamepad with the new joystick data.
+  * @param bleGamepad Reference to the BleGamepad object
+  * @param joystickDataUnion Reference to the JoystickDataUnion structure containing joystick data
+  * This function reads the joystick data, processes it to apply dead zones and scaling, smooths the values, and sends the updated joystick data to the BLE Gamepad if it is connected.
+*/
 void updateJoystickBle(BleGamepad &bleGamepad, JoystickDataUnion &joystickDataUnion)
 {
 
@@ -275,6 +284,11 @@ void cycleRGBOnce()
   analogWrite(LED_BLUE_PIN, 0);
 }
 
+/*
+@brief Processes the motor by enabling it for a short duration.
+  * This function sets the MOTOR_EN_PIN to HIGH for 500 milliseconds and then sets it back to LOW.
+  * It is used to control the motor's operation, such as starting or stopping it.
+*/
 void processMotor()
 {
   digitalWrite(MOTOR_EN_PIN, HIGH);
@@ -282,6 +296,13 @@ void processMotor()
   digitalWrite(MOTOR_EN_PIN, LOW);
 }
 
+/*
+@brief Reads battery data from the MAX17048 battery monitor and updates the provided BatteryData structure.
+  * @param batteryData Reference to the BatteryData structure to store battery information
+  * @param maxlipo Reference to the Adafruit_MAX17048 object for battery monitoring
+  * This function reads the battery voltage, percentage, charge rate, and charging status,
+  * and updates the BatteryData structure accordingly.
+*/
 void readBatteryData(BatteryData &batteryData, Adafruit_MAX17048 &maxlipo)
 {
   float voltage = maxlipo.cellVoltage();
@@ -293,12 +314,11 @@ void readBatteryData(BatteryData &batteryData, Adafruit_MAX17048 &maxlipo)
   float percent = maxlipo.cellPercent();
   percent = constrain(percent, 0, 100);
   batteryData.batteryLevel = (uint8_t)percent;
- 
-  float chargeRate = maxlipo.chargeRate();
-   
 
-  bool isCharging = (voltage > 4.0); 
-  
+  float chargeRate = maxlipo.chargeRate();
+
+  bool isCharging = (voltage > 4.0);
+
   if (percent >= 100 && !isCharging)
   {
     batteryData.batteryChargeStatus = BatteryChargeStatus::BATTERY_CHARGE_STATUS_FULLY_CHARGED;
@@ -330,7 +350,7 @@ void IRAM_ATTR switchChangeISR()
   {
     swithChangePressed = false;
     swithChange = true;
-  }
+ }
 }
 
 /*
@@ -349,13 +369,15 @@ void setPowerDown()
 @brief Processes the switch change event.
   * This function checks if a switch change has occurred and if it has been long enough to trigger a power down.
   * If a long press is detected, it calls the setPowerDown function to power down the system.
-*/
-void processSwithChange()
+*/void processSwithChange()
 {
   if (swithChange)
   {
     swithChange = false;
-    if (millis() - lastSwithChangeTime > LONG_PRESS_TIME)
+
+    unsigned long pressDuration = millis() - lastSwithChangeTime;
+
+    if (pressDuration > LONG_PRESS_TIME)
     {
       Serial.println("Long press detected, powering down...");
       setPowerDown();

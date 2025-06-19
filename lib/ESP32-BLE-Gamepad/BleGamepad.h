@@ -111,7 +111,7 @@ public:
     void setBatteryChargeStatus(uint8_t state);
     uint8_t batteryLevel;
     uint8_t batteryChargeStatus;
-    uint8_t isOnWriteConfig = 0, isOnWriteUinixTime = 0, isRightSize = 0, isOnReadConfig = 0, isOnReadUinixTime = 0; //flag to check if write is from config or unix time
+    uint8_t isOnWriteConfig = 0, isOnWriteUinixTime = 0, isRightSize = 0, isOnReadConfig = 0, isOnReadUinixTime = 0, isCalibration = 0 , isCalitool = 0 ;  //flag to check if write is from config or unix time
 
     std::string deviceManufacturer;
     std::string deviceName;
