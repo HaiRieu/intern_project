@@ -2,6 +2,9 @@
 #include "functiondef.h"
 
 unsigned long lastWriteTime = 0;
+bool isConfigIMU = false;
+bool isConfigFail = false;
+
 /*
 brief Setup BLE Gamepad
  * This function initializes the BLE Gamepad with the specified configuration.
@@ -406,8 +409,8 @@ bool loadconfigEEProm(EEPROMDataCheckUnion &configData)
 @param lis3mdl2 Reference to the second Adafruit_LIS3MDL IMU object
 This function checks if the BLE Gamepad is connected and if it is in read or write configuration mode. If in read mode, it loads the configuration from EEPROM and updates the IMU settings accordingly. If in write mode, it retrieves the configuration data from the BLE Gamepad, updates the EEPROM data, and saves it to EEPROM.
 */
-bool onWriteconfig(EEPROMDataCheckUnion &configData, 
-                   BleGamepad &bleGamepad, 
+bool onWriteconfig(EEPROMDataCheckUnion &configData,
+                   BleGamepad &bleGamepad,
                    ImuJoystickUnion &imuJoystickUnion,
                    Adafruit_LSM6DS3TRC &lsm6ds1,
                    Adafruit_LIS3MDL &lis3mdl1,
@@ -434,7 +437,7 @@ bool onWriteconfig(EEPROMDataCheckUnion &configData,
         imuJoystickUnion.configDataImuJOTISK.IMU2MagRangeGauss = convertImuMagRangeGaus(configData.EEPROMDataCheck.IMU2MagRangeGauss);
         imuJoystickUnion.configDataImuJOTISK.IMU2GyroRangeDps = convertImuGyroRangeDps(configData.EEPROMDataCheck.IMU2GyroRangeDps);
         imuJoystickUnion.configDataImuJOTISK.JoystickFlexSensorRate = configData.EEPROMDataCheck.JoystickFlexSensorRate;
-        imuJoystickUnion.configDataImuJOTISK.CMD =  configData.EEPROMDataCheck.CMD; 
+        imuJoystickUnion.configDataImuJOTISK.CMD = configData.EEPROMDataCheck.CMD;
 
         bleGamepad.setterCharacterData(bleGamepad.Config, imuJoystickUnion.rawData, sizeof(imuJoystickUnion.rawData));
     }
@@ -467,9 +470,11 @@ bool onWriteconfig(EEPROMDataCheckUnion &configData,
         setupIMUDataRateConfig(lsm6ds2, lis3mdl2, configData, 2);
 
         saveSetting(configData);
+        isConfigIMU = true;
         return true;
     }
 
+    isConfigFail = true;
     return false;
 }
 
@@ -492,13 +497,11 @@ void sendDataBLE(BleGamepad &bleGamepad,
         {
             bleGamepad.setterCharacterData(bleGamepad.IMU1RawData, imuData.rawData, sizeof(imuData.rawData));
             bleGamepad.setterCharacterData(bleGamepad.IMU1FuseDataCaliStatus, IMUeurle.rawData, sizeof(IMUeurle.rawData));
-      
         }
         else
         {
             bleGamepad.setterCharacterData(bleGamepad.IMU2RawData, imuData.rawData, sizeof(imuData.rawData));
             bleGamepad.setterCharacterData(bleGamepad.IMU2FuseDataCaliStatus, IMUeurle.rawData, sizeof(IMUeurle.rawData));
-         
         }
     }
     else
@@ -507,6 +510,14 @@ void sendDataBLE(BleGamepad &bleGamepad,
     }
 }
 
+/*
+@brief Updates the overall status of the BLE Gamepad and sends it over BLE.
+@param bleGamepad Reference to the BleGamepad object
+@param overallStatusData Reference to the OverallStatusDataUnion containing overall status data
+@param imu1Status Status of IMU 1 (true if running, false if failed)
+@param imu2Status Status of IMU 2 (true if running, false if failed)
+@param fuelGauge Status of the fuel gauge (true if running, false if failed)
+*/
 void updateOverallStatus(BleGamepad &bleGamepad, OverallStatusDataUnion &overallStatusData, bool &imu1Status, bool &imu2Status, bool &fuelGauge)
 {
 
@@ -517,5 +528,29 @@ void updateOverallStatus(BleGamepad &bleGamepad, OverallStatusDataUnion &overall
         overallStatusData.overallStatusData.Imu1Status = imu1Status ? statusCodeSensor::RUNNING : statusCodeSensor::FAILED;
         overallStatusData.overallStatusData.Imu2Status = imu2Status ? statusCodeSensor::RUNNING : statusCodeSensor::FAILED;
         bleGamepad.setterCharacterData(bleGamepad.OverallStatus, overallStatusData.rawData, sizeof(overallStatusData.rawData));
+    }
+}
+
+/*
+@brief Function to update the LED color based on the configuration status.
+@param r Red color value (0-255)
+@param g Green color value (0-255)
+@param b Blue color value (0-255)
+@param delayTime Delay time in milliseconds
+*/
+void ledSatted()
+{
+    //  Serial.println("LED");
+    if (isConfigIMU)
+    {
+        Serial.println("LED is set to blue");
+        updateLed(0, 0, 255, 100);
+        isConfigIMU = false;
+    }
+    else if (isConfigFail)
+    {
+        Serial.println("LED is set to red");
+        updateLed(255, 0, 0, 100);
+        isConfigFail = false;
     }
 }

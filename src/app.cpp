@@ -154,7 +154,9 @@ void appprocess()
 
   bleCalibration(configData, bleGamepad, imuDataRawUnion1, imuDataRawUnion2, calibrationImu1, calibrationImu2,
                  imuEulerCalibration1, imuEulerCalibration2);
-   processSwithChange();
+  ledSatted() ; 
+
+  processSwithChange();  
 }
 /*
 @brief Calculate CRC16 checksum

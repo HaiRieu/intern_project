@@ -107,7 +107,7 @@ void bleCalibration(ImuJoystickUnion &imuJoystickUnion,
                     IMUDataRawUnion &imu1Data , IMUDataRawUnion &imu2Data, 
                     Adafruit_Sensor_Calibration_EEPROM &cal1, Adafruit_Sensor_Calibration_EEPROM &, IMUEulernUnion &imuEuler1, IMUEulernUnion &imuEuler2);
 
-void updateLed(int r, int g, int b, int times, int delayTime);
+void updateLed(int r, int g, int b,  int delayTime);
 
 void sendDataBLE(BleGamepad &bleGamepad,
                  IMUDataRawUnion &imuData,
@@ -125,5 +125,6 @@ uint16_t CRC16(uint16_t crc, uint8_t a);
 void receiveCalibration(Adafruit_Sensor_Calibration_EEPROM &cal);
 
 
+void ledSatted();
 
 #endif

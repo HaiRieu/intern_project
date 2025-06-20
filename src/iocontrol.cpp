@@ -18,9 +18,10 @@ const int size = sizeof(FLEX_POINTS) / sizeof(FlexDataPoint);
 
 static joystickCali joyCali = {2048, 2048, 100, 4095, false};
 
-volatile bool swithChange = false;
-volatile bool swithChangePressed = false;
-volatile unsigned long lastSwithChangeTime = 0;
+volatile unsigned long pressStartTime = 0;
+volatile bool buttonPressed = false;
+volatile bool eventHandled = false;
+bool longPrinted = false;
 
 /*
 brief Initialize the system by setting up pin modes and initial states.
@@ -30,6 +31,7 @@ void systemInit()
   pinMode(VSVY_EN_PIN, OUTPUT);
   digitalWrite(VSVY_EN_PIN, HIGH);
   pinMode(SW_DE_PIN, INPUT_PULLUP);
+  //  digitalWrite(SW_DE_PIN, HIGH);
   attachInterrupt(digitalPinToInterrupt(SW_DE_PIN), switchChangeISR, CHANGE);
   pinMode(LED_RED_PIN, OUTPUT);
   pinMode(LED_GREEN_PIN, OUTPUT);
@@ -219,7 +221,6 @@ void readJoystick(JoystickDataUnion &joystickDataUnion)
   joystickDataUnion.joystickData.joystickButton = digitalRead(JOYSTICK_BUTTON_PIN) == HIGH ? 1 : 0;
 }
 
-
 /*
 @brief Updates the joystick data in the BLE Gamepad.
   * This function processes the joystick data, smooths the values, and sends the updated data to the BLE Gamepad.
@@ -334,26 +335,6 @@ void readBatteryData(BatteryData &batteryData, Adafruit_MAX17048 &maxlipo)
 }
 
 /*
-@brief Interrupt Service Routine (ISR) for switch change detection.
-  * This function is triggered on a change in the state of the switch connected to SW_DE_PIN.
-  * It detects long presses and sets a flag for further processing.
-*/
-void IRAM_ATTR switchChangeISR()
-{
-  bool currentState = digitalRead(SW_DE_PIN) == LOW;
-  if (currentState && !swithChangePressed)
-  {
-    lastSwithChangeTime = millis();
-    swithChangePressed = true;
-  }
-  else if (!currentState && swithChangePressed)
-  {
-    swithChangePressed = false;
-    swithChange = true;
- }
-}
-
-/*
 @brief Powers down the system by disabling the VSVY_EN pin and entering an infinite loop.
   * This function is called when a long press on the switch is detected.
 */
@@ -369,38 +350,73 @@ void setPowerDown()
 @brief Processes the switch change event.
   * This function checks if a switch change has occurred and if it has been long enough to trigger a power down.
   * If a long press is detected, it calls the setPowerDown function to power down the system.
-*/void processSwithChange()
+*/
+void processSwithChange()
 {
-  if (swithChange)
+
+  if (buttonPressed && !longPrinted)
   {
-    swithChange = false;
-
-    unsigned long pressDuration = millis() - lastSwithChangeTime;
-
-    if (pressDuration > LONG_PRESS_TIME)
+    unsigned long pressDuration = millis() - pressStartTime;
+    Serial.println(pressDuration);
+    if (pressDuration >= 3000)
     {
-      Serial.println("Long press detected, powering down...");
+      longPrinted = true;
+      buttonPressed = false;
       setPowerDown();
     }
-    else
-    {
-      Serial.println("Short press detected, toggling switch state...");
-    }
+  }else if(eventHandled) {
+    eventHandled = false;
+    Serial.println("Short press detected");
   }
 }
 
-void updateLed(int r, int g, int b, int times, int delayTime)
+/*
+@brief Interrupt Service Routine (ISR) for switch change detection.
+  * This function is triggered on a change in the state of the switch connected to SW_DE_PIN.
+  * It detects long presses and sets a flag for further processing.
+*/
+void IRAM_ATTR switchChangeISR()
 {
-  for (int i = 0; i < times; i++)
+ 
+  bool currentState;
+  if (digitalRead(SW_DE_PIN) == HIGH)
   {
-    analogWrite(LED_RED_PIN, r);
-    analogWrite(LED_GREEN_PIN, g);
-    analogWrite(LED_BLUE_PIN, b);
-    delay(delayTime);
-
-    analogWrite(LED_RED_PIN, 0);
-    analogWrite(LED_GREEN_PIN, 0);
-    analogWrite(LED_BLUE_PIN, 0);
-    delay(delayTime);
+    currentState = true;
   }
+  else
+  {
+    currentState = false;
+  }
+
+ if (currentState && !buttonPressed)
+  {
+    pressStartTime = millis();
+    buttonPressed = true;
+    longPrinted = false;
+  }else if(!currentState && buttonPressed)
+  {
+    buttonPressed = false ;
+     eventHandled = true;
+
+  }
+}
+
+/*
+@brief Updates the LED color based on the provided RGB values and delay time.
+  * This function sets the RGB LED pins to the specified color values and waits for the given delay time.
+  * After the delay, it turns off the LED by setting all color pins to 0.
+  * @param r The red component value (0-255)
+  * @param g The green component value (0-255)
+  * @param b The blue component value (0-255)
+  * @param delayTime The delay time in milliseconds before turning off the LED
+*/
+void updateLed(int r, int g, int b, int delayTime)
+{
+  analogWrite(LED_RED_PIN, r);
+  analogWrite(LED_GREEN_PIN, g);
+  analogWrite(LED_BLUE_PIN, b);
+  delay(delayTime);  
+  analogWrite(LED_RED_PIN, 0);
+  analogWrite(LED_GREEN_PIN, 0);
+  analogWrite(LED_BLUE_PIN, 0);
 }
