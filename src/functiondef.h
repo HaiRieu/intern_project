@@ -56,6 +56,7 @@ void cycleRGBOnce();
 void processMotor();
 
 void updateOverallStatusData(OverallStatusDataUnion &overallStatusDatapPacked);
+
 void updateOverallStatus(BleGamepad &bleGamepad, OverallStatusDataUnion &overallStatusData, bool &imu1Status, bool &imu2Status, bool &fuelGauge);
 
 void readDataIMU(Adafruit_LSM6DS3TRC &lsm6ds,
@@ -124,6 +125,7 @@ uint16_t CRC16(uint16_t crc, uint8_t a);
 
 void receiveCalibration(Adafruit_Sensor_Calibration_EEPROM &cal);
 
+void handleLedAutoOff();
 
 void ledSatted();
 

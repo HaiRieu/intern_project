@@ -22,6 +22,8 @@ volatile unsigned long pressStartTime = 0;
 volatile bool buttonPressed = false;
 volatile bool eventHandled = false;
 bool longPrinted = false;
+bool isLedOn = false;
+unsigned long lastLed = 0;
 
 /*
 brief Initialize the system by setting up pin modes and initial states.
@@ -31,7 +33,6 @@ void systemInit()
   pinMode(VSVY_EN_PIN, OUTPUT);
   digitalWrite(VSVY_EN_PIN, HIGH);
   pinMode(SW_DE_PIN, INPUT_PULLUP);
-  //  digitalWrite(SW_DE_PIN, HIGH);
   attachInterrupt(digitalPinToInterrupt(SW_DE_PIN), switchChangeISR, CHANGE);
   pinMode(LED_RED_PIN, OUTPUT);
   pinMode(LED_GREEN_PIN, OUTPUT);
@@ -126,7 +127,7 @@ void checkbuttons(ButtonDataUnion &buttonDataUnion, BleGamepad &bleGamepad)
 {
   for (int i = 0; i < NUM_BUTTONS; i++)
   {
-    if (digitalRead(BUTTON_PINS[i]) == LOW)
+    if (digitalRead(BUTTON_PINS[i]) == HIGH)
     {
       buttonDataUnion.buttonData.buttons[i] = 1;
     }
@@ -261,7 +262,6 @@ void cycleRGBOnce()
     analogWrite(LED_RED_PIN, 255 - i);
     analogWrite(LED_GREEN_PIN, i);
     analogWrite(LED_BLUE_PIN, 0);
-    delay(10);
   }
 
   for (int i = 0; i <= 255; i += 5)
@@ -269,7 +269,6 @@ void cycleRGBOnce()
     analogWrite(LED_RED_PIN, 0);
     analogWrite(LED_GREEN_PIN, 255 - i);
     analogWrite(LED_BLUE_PIN, i);
-    delay(10);
   }
 
   for (int i = 0; i <= 255; i += 5)
@@ -277,9 +276,7 @@ void cycleRGBOnce()
     analogWrite(LED_RED_PIN, i);
     analogWrite(LED_GREEN_PIN, 0);
     analogWrite(LED_BLUE_PIN, 255 - i);
-    delay(10);
   }
-
   analogWrite(LED_RED_PIN, 0);
   analogWrite(LED_GREEN_PIN, 0);
   analogWrite(LED_BLUE_PIN, 0);
@@ -364,7 +361,9 @@ void processSwithChange()
       buttonPressed = false;
       setPowerDown();
     }
-  }else if(eventHandled) {
+  }
+  else if (eventHandled)
+  {
     eventHandled = false;
     Serial.println("Short press detected");
   }
@@ -377,7 +376,7 @@ void processSwithChange()
 */
 void IRAM_ATTR switchChangeISR()
 {
- 
+
   bool currentState;
   if (digitalRead(SW_DE_PIN) == HIGH)
   {
@@ -388,16 +387,16 @@ void IRAM_ATTR switchChangeISR()
     currentState = false;
   }
 
- if (currentState && !buttonPressed)
+  if (currentState && !buttonPressed)
   {
     pressStartTime = millis();
     buttonPressed = true;
     longPrinted = false;
-  }else if(!currentState && buttonPressed)
+  }
+  else if (!currentState && buttonPressed)
   {
-    buttonPressed = false ;
-     eventHandled = true;
-
+    buttonPressed = false;
+    eventHandled = true;
   }
 }
 
@@ -410,13 +409,39 @@ void IRAM_ATTR switchChangeISR()
   * @param b The blue component value (0-255)
   * @param delayTime The delay time in milliseconds before turning off the LED
 */
+
 void updateLed(int r, int g, int b, int delayTime)
 {
-  analogWrite(LED_RED_PIN, r);
-  analogWrite(LED_GREEN_PIN, g);
-  analogWrite(LED_BLUE_PIN, b);
-  delay(delayTime);  
-  analogWrite(LED_RED_PIN, 0);
-  analogWrite(LED_GREEN_PIN, 0);
-  analogWrite(LED_BLUE_PIN, 0);
+
+  if (COMMON_ANODE)
+  {
+    r = 255 - r;
+    g = 255 - g;
+    b = 255 - b;
+  }
+
+  if (!isLedOn)
+  {
+    analogWrite(LED_RED_PIN, r);
+    analogWrite(LED_GREEN_PIN, g);
+    analogWrite(LED_BLUE_PIN, b);
+    lastLed = millis();
+    isLedOn = true;
+  }
+}
+
+void handleLedAutoOff()
+{
+  if (isLedOn)
+  {
+    Serial.println("LED is currently on, checking for auto-off condition");
+    if (millis() - lastLed >= 100)
+    {
+      Serial.println("turning off LED");
+      analogWrite(LED_RED_PIN, 0);
+      analogWrite(LED_GREEN_PIN, 0);
+      analogWrite(LED_BLUE_PIN, 0);
+      isLedOn = false;
+    }
+  }
 }

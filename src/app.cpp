@@ -122,6 +122,9 @@ void appprocess()
     sendDataBLE(bleGamepad, imuDataRawUnion2, imuEulerCalibration2, senBLEImu2);
   }
 
+   bleCalibration(configData, bleGamepad, imuDataRawUnion1, imuDataRawUnion2, calibrationImu1, calibrationImu2,
+                 imuEulerCalibration1, imuEulerCalibration2);
+
   if (millis() - lastFlexSensorReadTime >= configDataCheckUnion.EEPROMDataCheck.JoystickFlexSensorRate)
   {
     readFlexSensor(flexSensorDataUnion, bleGamepad);
@@ -152,9 +155,8 @@ void appprocess()
 
   onWriteconfig(configDataCheckUnion, bleGamepad, configData, lsm6ds1, lis3mdl1, lsm6ds2, lis3mdl2);
 
-  bleCalibration(configData, bleGamepad, imuDataRawUnion1, imuDataRawUnion2, calibrationImu1, calibrationImu2,
-                 imuEulerCalibration1, imuEulerCalibration2);
   ledSatted() ; 
+  handleLedAutoOff();
 
   processSwithChange();  
 }
@@ -374,6 +376,23 @@ void IRAM_ATTR imuInterruptHandlerImu2()
   imuDataIMUReady2 = true;
 }
 
+
+/*
+@brief Handle BLE calibration process
+
+ * This function manages the BLE calibration process by checking the received configuration data.
+ * It starts the calibration for IMU1 or IMU2 based on the command received.
+ * It also handles the calibration data reception and updates the BLE gamepad accordingly.
+ *
+ * @param imuJoystickUnion Reference to the ImuJoystickUnion structure containing IMU and joystick configuration data
+ * @param bleGamepad Reference to the BleGamepad object for BLE communication
+ * @param imu1Data Reference to the IMUDataRawUnion structure for IMU1 data
+ * @param imu2Data Reference to the IMUDataRawUnion structure for IMU2 data
+ * @param cal1 Reference to the Adafruit_Sensor_Calibration_EEPROM object for IMU1 calibration
+ * @param cal2 Reference to the Adafruit_Sensor_Calibration_EEPROM object for IMU2 calibration
+ * @param imuEuler1 Reference to the IMUEulernUnion structure for IMU1 Euler angles
+ * @param imuEuler2 Reference to the IMUEulernUnion structure for IMU2 Euler angles
+*/
 void bleCalibration(ImuJoystickUnion &imuJoystickUnion, BleGamepad &bleGamepad,
                     IMUDataRawUnion &imu1Data, IMUDataRawUnion &imu2Data,
                     Adafruit_Sensor_Calibration_EEPROM &cal1, Adafruit_Sensor_Calibration_EEPROM &cal2,

@@ -97,6 +97,12 @@ void configureIMUAccelGyroRate(EEPROMDataCheckUnion &configData, uint8_t rateVal
     }
 }
 
+/*
+@brief Function to configure the IMU2 accelerometer and gyroscope rate based on the provided rate value.
+@param configData Reference to the EEPROMDataCheckUnion containing configuration data
+@param rateValue The rate value to configure the IMU2 accelerometer and gyroscope
+This function sets the IMU2 accelerometer and gyroscope rate based on the provided rate value. It maps the rate value to a specific LSM6DS rate constant.
+*/
 void configureImuMagFreqHz(EEPROMDataCheckUnion &configData, uint8_t rateValue, uint8_t idIMU)
 {
     uint8_t value;
@@ -150,6 +156,13 @@ void configureImuMagFreqHz(EEPROMDataCheckUnion &configData, uint8_t rateValue, 
     }
 }
 
+/*
+@brief Function to configure the IMU magnetometer range based on the provided range value.
+@param configData Reference to the EEPROMDataCheckUnion containing configuration data
+@param rangeValue The range value to configure the IMU magnetometer
+@param idIMU The ID of the IMU (1 or 2) to configure
+This function sets the IMU magnetometer range based on the provided range value. It maps the range value to a specific LIS3MDL range constant.
+*/
 void configureIMUMagRange(EEPROMDataCheckUnion &configData, uint8_t rangeValue, uint8_t idIMU)
 {
     uint8_t value;
@@ -185,6 +198,13 @@ void configureIMUMagRange(EEPROMDataCheckUnion &configData, uint8_t rangeValue, 
     }
 }
 
+/*
+@brief Function to configure the IMU accelerometer range based on the provided range value.
+@param configData Reference to the EEPROMDataCheckUnion containing configuration data
+@param rangeValue The range value to configure the IMU accelerometer
+@param idIMU The ID of the IMU (1 or 2) to configure
+This function sets the IMU accelerometer range based on the provided range value. It maps the range value to a specific LSM6DS accelerometer range constant.
+*/
 void configureIMUAccelRange(EEPROMDataCheckUnion &configData, uint8_t rangeValue, uint8_t idIMU)
 {
     uint8_t value;
@@ -222,7 +242,14 @@ void configureIMUAccelRange(EEPROMDataCheckUnion &configData, uint8_t rangeValue
         configData.EEPROMDataCheck.IMU2AccelRangeG = value;
     }
 }
+/*
+@brief Function to configure the IMU gyroscope range based on the provided range value.
+@param configData Reference to the EEPROMDataCheckUnion containing configuration data
+@param rangeValue The range value to configure the IMU gyroscope
+@param idIMU The ID of the IMU (1 or 2) to configure
+This function sets the IMU gyroscope range based on the provided range value. It maps the range value to a specific LSM6DS gyroscope range constant.
 
+*/
 void configureIMUGyroRange(EEPROMDataCheckUnion &configData, uint8_t rangeValue, uint8_t idIMU)
 {
     uint8_t value;
@@ -264,6 +291,12 @@ void configureIMUGyroRange(EEPROMDataCheckUnion &configData, uint8_t rangeValue,
     }
 }
 
+/*
+@brief Function to convert the IMU accelerometer and gyroscope rate to a specific value.
+@param rate The rate value to convert
+@return The converted rate value as an unsigned 8-bit integer
+This function maps the provided rate value to a specific LSM6DS rate constant. It returns the corresponding value based on the input rate.
+*/
 uint8_t convertImuAccelGyroRate(uint8_t rate)
 {
     switch (rate)
@@ -292,7 +325,12 @@ uint8_t convertImuAccelGyroRate(uint8_t rate)
         return 0;
     }
 }
+/*
+@brief Function to convert the IMU magnetometer rate to a specific value.
+@param rate The rate value to convert
+@return The converted rate value as an unsigned 8-bit integer
 
+*/
 uint8_t convertImuMagRate(uint8_t rate)
 {
     switch (rate)
@@ -325,6 +363,12 @@ uint8_t convertImuMagRate(uint8_t rate)
     }
 }
 
+/*
+@brief Function to convert the IMU magnetometer range to a specific value.
+@param range The range value to convert
+@return The converted range value as an unsigned 8-bit integer
+This function maps the provided range value to a specific LIS3MDL range constant. It returns the corresponding value based on the input range.
+*/
 uint8_t convertImuMagRangeGaus(uint8_t range)
 {
     switch (range)
@@ -345,6 +389,12 @@ uint8_t convertImuMagRangeGaus(uint8_t range)
     }
 }
 
+/*
+@brief Function to convert the IMU accelerometer range to a specific value.
+@param range The range value to convert
+@return The converted range value as an unsigned 8-bit integer
+This function maps the provided range value to a specific LSM6DS accelerometer range constant. It returns the corresponding value based on the input range.
+*/
 uint8_t convertImuAccelRangeG(uint8_t range)
 {
     switch (range)
@@ -365,6 +415,12 @@ uint8_t convertImuAccelRangeG(uint8_t range)
     }
 }
 
+/*
+@brief Function to convert the IMU gyroscope range to a specific value.
+@param range The range value to convert
+@return The converted range value as an unsigned 8-bit integer
+This function maps the provided range value to a specific LSM6DS gyroscope range constant. It returns the corresponding value based on the input range.
+*/
 uint8_t convertImuGyroRangeDps(uint8_t range)
 {
     switch (range)
@@ -388,6 +444,11 @@ uint8_t convertImuGyroRangeDps(uint8_t range)
     }
 }
 
+/*
+@brief Function to load configuration data from EEPROM.
+@param configData Reference to the EEPROMDataCheckUnion containing configuration data
+@return true if configuration data is successfully loaded, false otherwise
+*/
 bool loadconfigEEProm(EEPROMDataCheckUnion &configData)
 {
     if (restoreSettings(configData))
@@ -474,7 +535,12 @@ bool onWriteconfig(EEPROMDataCheckUnion &configData,
         return true;
     }
 
-    isConfigFail = true;
+    if(bleGamepad.isOnWriteConfig == 1 && bleGamepad.isRightSize == 0) {
+        
+     isConfigFail = true;
+    
+    }
+
     return false;
 }
 
@@ -545,12 +611,17 @@ void ledSatted()
     {
         Serial.println("LED is set to blue");
         updateLed(0, 0, 255, 100);
+      
+        Serial.println("LED auto off is handled");
         isConfigIMU = false;
     }
     else if (isConfigFail)
     {
         Serial.println("LED is set to red");
         updateLed(255, 0, 0, 100);
+       
         isConfigFail = false;
     }
+
+    
 }

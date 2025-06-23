@@ -64,7 +64,7 @@
 #define FG_CHECK_INTERVAL 1000
 #define LONG_PRESS_TIME 3000
 #define SHORT_PRESS_TIME 50 
-
+#define COMMON_ANODE true
 
 enum CMDStatusCode : uint8_t
 {
