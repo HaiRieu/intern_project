@@ -129,4 +129,6 @@ void handleLedAutoOff();
 
 void ledSatted();
 
+void offLed() ;
+
 #endif

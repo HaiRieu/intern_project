@@ -337,6 +337,7 @@ void readBatteryData(BatteryData &batteryData, Adafruit_MAX17048 &maxlipo)
 */
 void setPowerDown()
 {
+
   digitalWrite(VSVY_EN_PIN, LOW);
   delay(100);
   while (true)
@@ -359,6 +360,7 @@ void processSwithChange()
     {
       longPrinted = true;
       buttonPressed = false;
+      offLed(); 
       setPowerDown();
     }
   }
@@ -402,14 +404,13 @@ void IRAM_ATTR switchChangeISR()
 
 /*
 @brief Updates the LED color based on the provided RGB values and delay time.
-  * This function sets the RGB LED pins to the specified color values and waits for the given delay time.
-  * After the delay, it turns off the LED by setting all color pins to 0.
-  * @param r The red component value (0-255)
-  * @param g The green component value (0-255)
-  * @param b The blue component value (0-255)
-  * @param delayTime The delay time in milliseconds before turning off the LED
+  * This function sets the LED color by writing the RGB values to the respective pins.
+  * It also manages the state of the LED, turning it on if it is currently off.
+  * @param r Red component (0-255)
+  * @param g Green component (0-255)
+  * @param b Blue component (0-255)
+  * @param delayTime Delay time in milliseconds (not used in this implementation)
 */
-
 void updateLed(int r, int g, int b, int delayTime)
 {
 
@@ -430,6 +431,12 @@ void updateLed(int r, int g, int b, int delayTime)
   }
 }
 
+/*
+@brief Handles the LED auto-off functionality.
+  * This function checks if the LED is currently on and if enough time has passed since it was last turned on.
+  * If the conditions are met, it turns off the LED by setting all color pins to 0.
+  * It is called periodically to manage the LED state without blocking other operations.
+*/
 void handleLedAutoOff()
 {
   if (isLedOn)
@@ -444,4 +451,11 @@ void handleLedAutoOff()
       isLedOn = false;
     }
   }
+}
+
+void offLed() {
+
+      analogWrite(LED_RED_PIN, 255);
+      analogWrite(LED_GREEN_PIN, 255);
+      analogWrite(LED_BLUE_PIN, 255);
 }
